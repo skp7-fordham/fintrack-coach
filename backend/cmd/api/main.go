@@ -1,7 +1,47 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
+)
 
 func main() {
-	fmt.Println("FinTrack Coach API")
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: router.New(),
+	}
+
+	go func() {
+		logger.Info("starting server", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("server error", "err", err)
+			os.Exit(1)
+		}
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	<-ctx.Done()
+	logger.Info("shutting down server")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Error("graceful shutdown failed", "err", err)
+		os.Exit(1)
+	}
+
+	logger.Info("server stopped")
 }
