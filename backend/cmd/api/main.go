@@ -10,19 +10,21 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	cfg := config.Load()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + cfg.ServerPort,
 		Handler: router.New(),
 	}
 
 	go func() {
-		logger.Info("starting server", "addr", srv.Addr)
+		logger.Info("starting server", "addr", srv.Addr, "env", cfg.Environment)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("server error", "err", err)
 			os.Exit(1)
