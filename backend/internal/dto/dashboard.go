@@ -11,3 +11,15 @@ type CategorySpendingQuery struct {
 	UserID string
 	Month  string
 }
+
+// MonthlyTrendsQuery holds raw query-string values for GET /dashboard/monthly-trends.
+type MonthlyTrendsQuery struct {
+	UserID string
+	Months string
+}
+
+// RecentTransactionsQuery holds raw query-string values for GET /dashboard/recent-transactions.
+type RecentTransactionsQuery struct {
+	UserID string
+	Limit  string
+}
