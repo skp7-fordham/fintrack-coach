@@ -1,0 +1,47 @@
+# FinTrack Coach — local infrastructure (Postgres + Redis)
+# Usage:
+#   docker compose up -d
+#   docker compose down        # stop containers, keep volumes
+#   docker compose down -v     # stop and delete volumes (wipes data)
+
+services:
+  # Primary relational database for application data.
+  postgres:
+    image: postgres:16
+    container_name: fintrack-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: fintrack
+      POSTGRES_USER: fintrack
+      POSTGRES_PASSWORD: fintrack
+    volumes:
+      # Persist database files across container restarts.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fintrack -d fintrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # In-memory store for cache, sessions, and short-lived state.
+  redis:
+    image: redis:7
+    container_name: fintrack-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      # Persist Redis RDB/AOF data across container restarts.
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  # Named volume backing the PostgreSQL data directory.
+  postgres_data:
+
+  # Named volume backing Redis persistence under /data.
+  redis_data:
