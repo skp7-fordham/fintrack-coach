@@ -12,7 +12,10 @@ import (
 
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/repository"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/service"
 )
 
 func main() {
@@ -30,9 +33,15 @@ func main() {
 	defer pool.Close()
 	logger.Info("connected to postgres")
 
+	transactionRepo := repository.NewTransactionRepository(pool)
+	transactionService := service.NewTransactionService(transactionRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionService, logger)
+
 	srv := &http.Server{
-		Addr:    ":" + cfg.ServerPort,
-		Handler: router.New(),
+		Addr: ":" + cfg.ServerPort,
+		Handler: router.New(router.Handlers{
+			Transactions: transactionHandler,
+		}),
 	}
 
 	go func() {
