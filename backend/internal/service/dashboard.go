@@ -11,6 +11,7 @@ import (
 
 type dashboardRepository interface {
 	GetDashboardSummary(ctx context.Context, filter domain.DashboardSummaryFilter) (*domain.DashboardSummary, error)
+	GetCategorySpending(ctx context.Context, filter domain.CategorySpendingFilter) (*domain.CategorySpendingResult, error)
 }
 
 type DashboardService struct {
@@ -25,41 +26,53 @@ func (s *DashboardService) GetSummary(
 	ctx context.Context,
 	query dto.DashboardSummaryQuery,
 ) (*domain.DashboardSummary, error) {
-	filter, err := buildDashboardSummaryFilter(query)
+	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(query.UserID, query.Month)
 	if err != nil {
 		return nil, err
 	}
 
-	summary, err := s.repo.GetDashboardSummary(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-
-	return summary, nil
+	return s.repo.GetDashboardSummary(ctx, domain.DashboardSummaryFilter{
+		UserID:            userID,
+		Month:             month,
+		MonthStart:        monthStart,
+		MonthEndExclusive: monthEndExclusive,
+	})
 }
 
-func buildDashboardSummaryFilter(query dto.DashboardSummaryQuery) (domain.DashboardSummaryFilter, error) {
-	userID := strings.TrimSpace(query.UserID)
-	if !isValidUUID(userID) {
-		return domain.DashboardSummaryFilter{}, &domain.ValidationError{Message: "user_id must be a valid UUID"}
+func (s *DashboardService) GetCategorySpending(
+	ctx context.Context,
+	query dto.CategorySpendingQuery,
+) (*domain.CategorySpendingResult, error) {
+	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(query.UserID, query.Month)
+	if err != nil {
+		return nil, err
 	}
 
-	month := strings.TrimSpace(query.Month)
+	return s.repo.GetCategorySpending(ctx, domain.CategorySpendingFilter{
+		UserID:            userID,
+		Month:             month,
+		MonthStart:        monthStart,
+		MonthEndExclusive: monthEndExclusive,
+	})
+}
+
+func resolveUserAndMonth(rawUserID, rawMonth string) (userID, month string, monthStart, monthEndExclusive time.Time, err error) {
+	userID = strings.TrimSpace(rawUserID)
+	if !isValidUUID(userID) {
+		return "", "", time.Time{}, time.Time{}, &domain.ValidationError{Message: "user_id must be a valid UUID"}
+	}
+
+	month = strings.TrimSpace(rawMonth)
 	if month == "" {
 		month = time.Now().UTC().Format("2006-01")
 	}
 
-	monthStart, monthEndExclusive, normalizedMonth, err := parseYearMonth(month)
+	monthStart, monthEndExclusive, month, err = parseYearMonth(month)
 	if err != nil {
-		return domain.DashboardSummaryFilter{}, err
+		return "", "", time.Time{}, time.Time{}, err
 	}
 
-	return domain.DashboardSummaryFilter{
-		UserID:            userID,
-		Month:             normalizedMonth,
-		MonthStart:        monthStart,
-		MonthEndExclusive: monthEndExclusive,
-	}, nil
+	return userID, month, monthStart, monthEndExclusive, nil
 }
 
 func parseYearMonth(month string) (start, endExclusive time.Time, normalized string, err error) {

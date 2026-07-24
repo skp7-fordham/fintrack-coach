@@ -17,5 +17,6 @@ func New(h Handlers) http.Handler {
 	mux.HandleFunc("GET /transactions", h.Transactions.List)
 	mux.HandleFunc("POST /transactions", h.Transactions.Create)
 	mux.HandleFunc("GET /dashboard/summary", h.Dashboard.Summary)
+	mux.HandleFunc("GET /dashboard/category-spending", h.Dashboard.CategorySpending)
 	return mux
 }

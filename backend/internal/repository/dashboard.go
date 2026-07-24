@@ -96,3 +96,95 @@ func (r *DashboardRepository) aggregateMonthlyTransactions(
 
 	return income, expense, netCashFlow, count, nil
 }
+
+func (r *DashboardRepository) GetCategorySpending(
+	ctx context.Context,
+	filter domain.CategorySpendingFilter,
+) (*domain.CategorySpendingResult, error) {
+	const query = `
+		WITH filtered_expenses AS (
+			SELECT
+				t.category_id,
+				t.amount,
+				c.name AS category_name,
+				c.color AS category_color,
+				c.icon AS category_icon
+			FROM transactions t
+			LEFT JOIN categories c ON c.id = t.category_id
+			WHERE t.user_id = $1
+			  AND t.transaction_status = 'completed'
+			  AND t.transaction_type = 'expense'
+			  AND t.transaction_date >= $2
+			  AND t.transaction_date < $3
+		),
+		grouped AS (
+			SELECT
+				category_id,
+				category_name,
+				category_color,
+				category_icon,
+				SUM(amount) AS category_amount,
+				COUNT(*)::bigint AS transaction_count
+			FROM filtered_expenses
+			GROUP BY category_id, category_name, category_color, category_icon
+		)
+		SELECT
+			category_id::text,
+			COALESCE(category_name, 'Uncategorized') AS category_name,
+			category_color,
+			category_icon,
+			category_amount::numeric(14, 2)::text AS amount,
+			transaction_count,
+			(
+				category_amount
+				/ SUM(category_amount) OVER ()
+				* 100
+			)::numeric(14, 2)::text AS percentage,
+			(SUM(category_amount) OVER ())::numeric(14, 2)::text AS total_expense
+		FROM grouped
+		ORDER BY category_amount DESC, COALESCE(category_name, 'Uncategorized') ASC
+	`
+
+	rows, err := r.pool.Query(
+		ctx,
+		query,
+		filter.UserID,
+		filter.MonthStart,
+		filter.MonthEndExclusive,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get category spending: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.CategorySpendingItem, 0)
+	totalExpense := "0.00"
+
+	for rows.Next() {
+		var item domain.CategorySpendingItem
+		var rowTotalExpense string
+		if err := rows.Scan(
+			&item.CategoryID,
+			&item.CategoryName,
+			&item.CategoryColor,
+			&item.CategoryIcon,
+			&item.Amount,
+			&item.TransactionCount,
+			&item.Percentage,
+			&rowTotalExpense,
+		); err != nil {
+			return nil, fmt.Errorf("scan category spending: %w", err)
+		}
+		totalExpense = rowTotalExpense
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate category spending: %w", err)
+	}
+
+	return &domain.CategorySpendingResult{
+		Month:        filter.Month,
+		TotalExpense: totalExpense,
+		Items:        items,
+	}, nil
+}
