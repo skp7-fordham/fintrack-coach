@@ -56,3 +56,27 @@ type CreateTransactionInput struct {
 	TransactionDate   time.Time
 	Notes             *string
 }
+
+const (
+	SortByTransactionDate = "transaction_date"
+	SortByCreatedAt       = "created_at"
+
+	OrderAsc  = "asc"
+	OrderDesc = "desc"
+)
+
+// TransactionFilter holds validated list filters for GET /transactions.
+type TransactionFilter struct {
+	UserID            string
+	AccountID         *string
+	CategoryID        *string
+	TransactionType   *string
+	TransactionStatus *string
+	From              *time.Time
+	To                *time.Time
+	Search            string
+	Page              int
+	PageSize          int
+	Sort              string
+	Order             string
+}

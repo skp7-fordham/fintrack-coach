@@ -32,6 +32,18 @@ type createTransactionResponse struct {
 	Data transactionResponseData `json:"data"`
 }
 
+type listTransactionsResponse struct {
+	Data       []transactionResponseData `json:"data"`
+	Pagination paginationResponse        `json:"pagination"`
+}
+
+type paginationResponse struct {
+	Page       int   `json:"page"`
+	PageSize   int   `json:"page_size"`
+	TotalItems int64 `json:"total_items"`
+	TotalPages int   `json:"total_pages"`
+}
+
 type transactionResponseData struct {
 	ID                string  `json:"id"`
 	UserID            string  `json:"user_id"`
@@ -106,6 +118,52 @@ func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
+	query := dto.ListTransactionsQuery{
+		UserID:            r.URL.Query().Get("user_id"),
+		AccountID:         r.URL.Query().Get("account_id"),
+		CategoryID:        r.URL.Query().Get("category_id"),
+		TransactionType:   r.URL.Query().Get("transaction_type"),
+		TransactionStatus: r.URL.Query().Get("transaction_status"),
+		From:              r.URL.Query().Get("from"),
+		To:                r.URL.Query().Get("to"),
+		Search:            r.URL.Query().Get("search"),
+		Page:              r.URL.Query().Get("page"),
+		PageSize:          r.URL.Query().Get("page_size"),
+		Sort:              r.URL.Query().Get("sort"),
+		Order:             r.URL.Query().Get("order"),
+	}
+
+	result, err := h.service.ListTransactions(r.Context(), query)
+	if err != nil {
+		h.writeListError(w, err)
+		return
+	}
+
+	h.logger.Info(
+		"transactions listed",
+		"user_id", query.UserID,
+		"page", result.Page,
+		"page_size", result.PageSize,
+		"total_items", result.TotalItems,
+	)
+
+	data := make([]transactionResponseData, 0, len(result.Transactions))
+	for i := range result.Transactions {
+		data = append(data, toTransactionResponseData(&result.Transactions[i]))
+	}
+
+	writeJSON(w, http.StatusOK, listTransactionsResponse{
+		Data: data,
+		Pagination: paginationResponse{
+			Page:       result.Page,
+			PageSize:   result.PageSize,
+			TotalItems: result.TotalItems,
+			TotalPages: result.TotalPages,
+		},
+	})
+}
+
 func (h *TransactionHandler) writeCreateError(w http.ResponseWriter, err error) {
 	var validationErr *domain.ValidationError
 	switch {
@@ -117,6 +175,17 @@ func (h *TransactionHandler) writeCreateError(w http.ResponseWriter, err error) 
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "category not found for user"})
 	default:
 		h.logger.Error("failed to create transaction", "err", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+	}
+}
+
+func (h *TransactionHandler) writeListError(w http.ResponseWriter, err error) {
+	var validationErr *domain.ValidationError
+	switch {
+	case errors.As(err, &validationErr):
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: validationErr.Message})
+	default:
+		h.logger.Error("failed to list transactions", "err", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
 	}
 }

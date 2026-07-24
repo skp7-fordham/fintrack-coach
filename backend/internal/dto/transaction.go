@@ -15,3 +15,19 @@ type CreateTransactionRequest struct {
 	TransactionDate   string          `json:"transaction_date"`
 	Notes             *string         `json:"notes"`
 }
+
+// ListTransactionsQuery holds raw query-string values for GET /transactions.
+type ListTransactionsQuery struct {
+	UserID            string
+	AccountID         string
+	CategoryID        string
+	TransactionType   string
+	TransactionStatus string
+	From              string
+	To                string
+	Search            string
+	Page              string
+	PageSize          string
+	Sort              string
+	Order             string
+}
