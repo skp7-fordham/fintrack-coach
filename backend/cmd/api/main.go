@@ -37,10 +37,15 @@ func main() {
 	transactionService := service.NewTransactionService(transactionRepo)
 	transactionHandler := handlers.NewTransactionHandler(transactionService, logger)
 
+	dashboardRepo := repository.NewDashboardRepository(pool)
+	dashboardService := service.NewDashboardService(dashboardRepo)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardService, logger)
+
 	srv := &http.Server{
 		Addr: ":" + cfg.ServerPort,
 		Handler: router.New(router.Handlers{
 			Transactions: transactionHandler,
+			Dashboard:    dashboardHandler,
 		}),
 	}
 

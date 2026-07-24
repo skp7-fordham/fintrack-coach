@@ -8,6 +8,7 @@ import (
 
 type Handlers struct {
 	Transactions *handlers.TransactionHandler
+	Dashboard    *handlers.DashboardHandler
 }
 
 func New(h Handlers) http.Handler {
@@ -15,5 +16,6 @@ func New(h Handlers) http.Handler {
 	mux.HandleFunc("GET /health", handlers.Health)
 	mux.HandleFunc("GET /transactions", h.Transactions.List)
 	mux.HandleFunc("POST /transactions", h.Transactions.Create)
+	mux.HandleFunc("GET /dashboard/summary", h.Dashboard.Summary)
 	return mux
 }
