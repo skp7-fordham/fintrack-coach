@@ -11,12 +11,24 @@ import (
 	"time"
 
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	cfg := config.Load()
+
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dbCancel()
+
+	pool, err := database.NewPostgresPool(dbCtx, cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("failed to connect to postgres", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	logger.Info("connected to postgres")
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.ServerPort,
