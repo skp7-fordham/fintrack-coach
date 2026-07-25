@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/auth"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
@@ -20,7 +21,12 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	cfg := config.Load()
+
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("failed to load config", "err", err)
+		os.Exit(1)
+	}
 
 	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer dbCancel()
@@ -33,6 +39,13 @@ func main() {
 	defer pool.Close()
 	logger.Info("connected to postgres")
 
+	tokenManager := auth.NewTokenManager(cfg.JWTSecret, cfg.JWTAccessTokenTTL)
+	authenticate := auth.Middleware(tokenManager)
+
+	authRepo := repository.NewAuthRepository(pool)
+	authService := service.NewAuthService(authRepo, tokenManager)
+	authHandler := handlers.NewAuthHandler(authService, logger)
+
 	transactionRepo := repository.NewTransactionRepository(pool)
 	transactionService := service.NewTransactionService(transactionRepo)
 	transactionHandler := handlers.NewTransactionHandler(transactionService, logger)
@@ -44,9 +57,10 @@ func main() {
 	srv := &http.Server{
 		Addr: ":" + cfg.ServerPort,
 		Handler: router.New(router.Handlers{
+			Auth:         authHandler,
 			Transactions: transactionHandler,
 			Dashboard:    dashboardHandler,
-		}),
+		}, authenticate),
 	}
 
 	go func() {

@@ -7,18 +7,24 @@ import (
 )
 
 type Handlers struct {
+	Auth         *handlers.AuthHandler
 	Transactions *handlers.TransactionHandler
 	Dashboard    *handlers.DashboardHandler
 }
 
-func New(h Handlers) http.Handler {
+func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler {
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("GET /health", handlers.Health)
-	mux.HandleFunc("GET /transactions", h.Transactions.List)
-	mux.HandleFunc("POST /transactions", h.Transactions.Create)
-	mux.HandleFunc("GET /dashboard/summary", h.Dashboard.Summary)
-	mux.HandleFunc("GET /dashboard/category-spending", h.Dashboard.CategorySpending)
-	mux.HandleFunc("GET /dashboard/monthly-trends", h.Dashboard.MonthlyTrends)
-	mux.HandleFunc("GET /dashboard/recent-transactions", h.Dashboard.RecentTransactions)
+	mux.HandleFunc("POST /auth/register", h.Auth.Register)
+	mux.HandleFunc("POST /auth/login", h.Auth.Login)
+
+	mux.Handle("POST /transactions", authenticate(http.HandlerFunc(h.Transactions.Create)))
+	mux.Handle("GET /transactions", authenticate(http.HandlerFunc(h.Transactions.List)))
+	mux.Handle("GET /dashboard/summary", authenticate(http.HandlerFunc(h.Dashboard.Summary)))
+	mux.Handle("GET /dashboard/category-spending", authenticate(http.HandlerFunc(h.Dashboard.CategorySpending)))
+	mux.Handle("GET /dashboard/monthly-trends", authenticate(http.HandlerFunc(h.Dashboard.MonthlyTrends)))
+	mux.Handle("GET /dashboard/recent-transactions", authenticate(http.HandlerFunc(h.Dashboard.RecentTransactions)))
+
 	return mux
 }

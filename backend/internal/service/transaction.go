@@ -68,9 +68,10 @@ func (s *TransactionService) CreateTransaction(
 
 func (s *TransactionService) ListTransactions(
 	ctx context.Context,
+	userID string,
 	query dto.ListTransactionsQuery,
 ) (*ListTransactionsResult, error) {
-	filter, err := buildTransactionFilter(query)
+	filter, err := buildTransactionFilter(userID, query)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +95,8 @@ func (s *TransactionService) ListTransactions(
 	}, nil
 }
 
-func buildTransactionFilter(query dto.ListTransactionsQuery) (domain.TransactionFilter, error) {
-	userID := strings.TrimSpace(query.UserID)
+func buildTransactionFilter(userID string, query dto.ListTransactionsQuery) (domain.TransactionFilter, error) {
+	userID = strings.TrimSpace(userID)
 	if !isValidUUID(userID) {
 		return domain.TransactionFilter{}, &domain.ValidationError{Message: "user_id must be a valid UUID"}
 	}

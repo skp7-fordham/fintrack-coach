@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/auth"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/domain"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/dto"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/service"
@@ -65,6 +66,12 @@ type errorResponse struct {
 }
 
 func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
+	}
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxTransactionBodyBytes)
 
 	var req dto.CreateTransactionRequest
@@ -86,7 +93,7 @@ func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input := domain.CreateTransactionInput{
-		UserID:            req.UserID,
+		UserID:            userID,
 		AccountID:         req.AccountID,
 		CategoryID:        req.CategoryID,
 		Description:       req.Description,
@@ -119,8 +126,13 @@ func (h *TransactionHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
+	}
+
 	query := dto.ListTransactionsQuery{
-		UserID:            r.URL.Query().Get("user_id"),
 		AccountID:         r.URL.Query().Get("account_id"),
 		CategoryID:        r.URL.Query().Get("category_id"),
 		TransactionType:   r.URL.Query().Get("transaction_type"),
@@ -134,7 +146,7 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 		Order:             r.URL.Query().Get("order"),
 	}
 
-	result, err := h.service.ListTransactions(r.Context(), query)
+	result, err := h.service.ListTransactions(r.Context(), userID, query)
 	if err != nil {
 		h.writeListError(w, err)
 		return
@@ -142,7 +154,7 @@ func (h *TransactionHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info(
 		"transactions listed",
-		"user_id", query.UserID,
+		"user_id", userID,
 		"page", result.Page,
 		"page_size", result.PageSize,
 		"total_items", result.TotalItems,

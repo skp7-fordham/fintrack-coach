@@ -38,9 +38,10 @@ func NewDashboardService(repo dashboardRepository) *DashboardService {
 
 func (s *DashboardService) GetSummary(
 	ctx context.Context,
+	userID string,
 	query dto.DashboardSummaryQuery,
 ) (*domain.DashboardSummary, error) {
-	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(query.UserID, query.Month)
+	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(userID, query.Month)
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +56,10 @@ func (s *DashboardService) GetSummary(
 
 func (s *DashboardService) GetCategorySpending(
 	ctx context.Context,
+	userID string,
 	query dto.CategorySpendingQuery,
 ) (*domain.CategorySpendingResult, error) {
-	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(query.UserID, query.Month)
+	userID, month, monthStart, monthEndExclusive, err := resolveUserAndMonth(userID, query.Month)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +74,10 @@ func (s *DashboardService) GetCategorySpending(
 
 func (s *DashboardService) GetMonthlyTrends(
 	ctx context.Context,
+	userID string,
 	query dto.MonthlyTrendsQuery,
 ) (*domain.MonthlyTrendResult, error) {
-	userID, err := resolveUserID(query.UserID)
+	userID, err := resolveUserID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +105,10 @@ func (s *DashboardService) GetMonthlyTrends(
 
 func (s *DashboardService) GetRecentTransactions(
 	ctx context.Context,
+	userID string,
 	query dto.RecentTransactionsQuery,
 ) (*domain.RecentTransactionsResult, error) {
-	userID, err := resolveUserID(query.UserID)
+	userID, err := resolveUserID(userID)
 	if err != nil {
 		return nil, err
 	}

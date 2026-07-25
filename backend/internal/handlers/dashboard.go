@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/auth"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/domain"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/dto"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/service"
@@ -101,12 +101,17 @@ type recentTransactionsMeta struct {
 }
 
 func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
-	query := dto.DashboardSummaryQuery{
-		UserID: r.URL.Query().Get("user_id"),
-		Month:  r.URL.Query().Get("month"),
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
 	}
 
-	summary, err := h.service.GetSummary(r.Context(), query)
+	query := dto.DashboardSummaryQuery{
+		Month: r.URL.Query().Get("month"),
+	}
+
+	summary, err := h.service.GetSummary(r.Context(), userID, query)
 	if err != nil {
 		h.writeDashboardError(w, err, "failed to get dashboard summary")
 		return
@@ -114,7 +119,7 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info(
 		"dashboard summary retrieved",
-		"user_id", strings.TrimSpace(query.UserID),
+		"user_id", userID,
 		"month", summary.Month,
 		"transaction_count", summary.TransactionCount,
 	)
@@ -132,12 +137,17 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DashboardHandler) CategorySpending(w http.ResponseWriter, r *http.Request) {
-	query := dto.CategorySpendingQuery{
-		UserID: r.URL.Query().Get("user_id"),
-		Month:  r.URL.Query().Get("month"),
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
 	}
 
-	result, err := h.service.GetCategorySpending(r.Context(), query)
+	query := dto.CategorySpendingQuery{
+		Month: r.URL.Query().Get("month"),
+	}
+
+	result, err := h.service.GetCategorySpending(r.Context(), userID, query)
 	if err != nil {
 		h.writeDashboardError(w, err, "failed to get category spending")
 		return
@@ -145,7 +155,7 @@ func (h *DashboardHandler) CategorySpending(w http.ResponseWriter, r *http.Reque
 
 	h.logger.Info(
 		"category spending retrieved",
-		"user_id", strings.TrimSpace(query.UserID),
+		"user_id", userID,
 		"month", result.Month,
 		"category_count", len(result.Items),
 	)
@@ -173,12 +183,17 @@ func (h *DashboardHandler) CategorySpending(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *DashboardHandler) MonthlyTrends(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
+	}
+
 	query := dto.MonthlyTrendsQuery{
-		UserID: r.URL.Query().Get("user_id"),
 		Months: r.URL.Query().Get("months"),
 	}
 
-	result, err := h.service.GetMonthlyTrends(r.Context(), query)
+	result, err := h.service.GetMonthlyTrends(r.Context(), userID, query)
 	if err != nil {
 		h.writeDashboardError(w, err, "failed to get monthly trends")
 		return
@@ -186,7 +201,7 @@ func (h *DashboardHandler) MonthlyTrends(w http.ResponseWriter, r *http.Request)
 
 	h.logger.Info(
 		"monthly trends retrieved",
-		"user_id", strings.TrimSpace(query.UserID),
+		"user_id", userID,
 		"months", result.Months,
 		"row_count", len(result.Items),
 	)
@@ -213,12 +228,17 @@ func (h *DashboardHandler) MonthlyTrends(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *DashboardHandler) RecentTransactions(w http.ResponseWriter, r *http.Request) {
-	query := dto.RecentTransactionsQuery{
-		UserID: r.URL.Query().Get("user_id"),
-		Limit:  r.URL.Query().Get("limit"),
+	userID, ok := auth.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "authentication required"})
+		return
 	}
 
-	result, err := h.service.GetRecentTransactions(r.Context(), query)
+	query := dto.RecentTransactionsQuery{
+		Limit: r.URL.Query().Get("limit"),
+	}
+
+	result, err := h.service.GetRecentTransactions(r.Context(), userID, query)
 	if err != nil {
 		h.writeDashboardError(w, err, "failed to get recent transactions")
 		return
@@ -226,7 +246,7 @@ func (h *DashboardHandler) RecentTransactions(w http.ResponseWriter, r *http.Req
 
 	h.logger.Info(
 		"recent transactions retrieved",
-		"user_id", strings.TrimSpace(query.UserID),
+		"user_id", userID,
 		"limit", result.Limit,
 		"row_count", len(result.Items),
 	)
