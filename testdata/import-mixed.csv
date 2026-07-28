@@ -1,0 +1,5 @@
+date,description,merchant,amount,type,category,notes
+2026-07-02,Coffee,Cafe,5.50,expense,Groceries,
+invalid-date,Lunch,Cafe,20.00,expense,Groceries,
+2026-07-03,Unknown category,Store,10.00,expense,Does Not Exist,
+2026-07-04,Invalid amount,Store,1.234,expense,Groceries,

@@ -12,6 +12,7 @@ type Handlers struct {
 	Dashboard    *handlers.DashboardHandler
 	Accounts     *handlers.AccountHandler
 	Categories   *handlers.CategoryHandler
+	Imports      *handlers.ImportHandler
 }
 
 func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler {
@@ -37,6 +38,11 @@ func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler 
 	mux.Handle("GET /categories", authenticate(http.HandlerFunc(h.Categories.List)))
 	mux.Handle("PATCH /categories/{id}", authenticate(http.HandlerFunc(h.Categories.Update)))
 	mux.Handle("DELETE /categories/{id}", authenticate(http.HandlerFunc(h.Categories.Delete)))
+
+	mux.Handle("POST /imports/transactions", authenticate(http.HandlerFunc(h.Imports.Create)))
+	mux.Handle("GET /imports", authenticate(http.HandlerFunc(h.Imports.List)))
+	mux.Handle("GET /imports/{id}", authenticate(http.HandlerFunc(h.Imports.Get)))
+	mux.Handle("GET /imports/{id}/errors", authenticate(http.HandlerFunc(h.Imports.ListErrors)))
 
 	return mux
 }

@@ -2,48 +2,72 @@
 
 FinTrack Coach is an agentic personal-finance application that helps users import transactions, analyze spending patterns, identify recurring expenses, create budgets, track savings goals, and receive personalized financial insights.
 
-## Planned Tech Stack
+## Tech Stack
 
-- Next.js
-
-- TypeScript
-
-- Go
-
+- Next.js / TypeScript (frontend)
+- Go (API + import worker)
 - PostgreSQL
-
 - Redis
+- Docker Compose
 
-- Docker
+## Local development
 
-- OpenAI API
+### 1. Start infrastructure
 
-## Planned Agentic Workflow
+```bash
+docker compose up -d
+```
 
-1. CSV parsing
+PostgreSQL is published on host port `5433`. Redis is on `6379`.
 
-2. Transaction normalization
+### 2. Configure backend env
 
-3. Transaction categorization
+```bash
+cd backend
+cp .env.example .env
+# set JWT_SECRET to a long random value
+```
 
-4. Recurring-payment detection
+### 3. Apply migrations
 
-5. Spending analysis
+From the project root:
 
-6. Budget recommendation
+```bash
+make migrate-up
+```
 
-7. Savings-goal planning
+### 4. Run the API
 
-8. AI financial coaching
+```bash
+cd backend
+set -a
+source .env
+set +a
+go run ./cmd/api
+```
+
+### 5. Run the CSV import worker
+
+In a second terminal:
+
+```bash
+cd backend
+set -a
+source .env
+set +a
+go run ./cmd/import-worker
+```
+
+## CSV transaction import
+
+1. `POST /imports/transactions` (multipart) creates a job, stores the CSV under `IMPORT_UPLOAD_DIR`, and enqueues the job ID in Redis.
+2. `cmd/import-worker` pops jobs with `BRPOP`, validates rows, inserts valid transactions atomically, updates account balances, and records row errors.
+3. Poll `GET /imports/{id}` for status. Use `GET /imports/{id}/errors` for row failures.
+
+Uploaded files are stored under `backend/var/imports` by default and are gitignored.
 
 ## Project Structure
 
 - `frontend` — Next.js user interface
-
 - `backend` — Go API and background workers
-
 - `docs` — architecture and API documentation
-
-## Status
-
-Project setup and architecture design in progress.

@@ -34,3 +34,5 @@ redis-data/
 
 # Uploaded files
 uploads/
+backend/var/
+var/

@@ -14,6 +14,7 @@ import (
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/queue"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/repository"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/service"
@@ -39,6 +40,14 @@ func main() {
 	defer pool.Close()
 	logger.Info("connected to postgres")
 
+	importQueue, err := queue.NewImportQueue(cfg.RedisURL, cfg.ImportQueueName)
+	if err != nil {
+		logger.Error("failed to connect to redis", "err", err)
+		os.Exit(1)
+	}
+	defer importQueue.Close()
+	logger.Info("connected to redis")
+
 	tokenManager := auth.NewTokenManager(cfg.JWTSecret, cfg.JWTAccessTokenTTL)
 	authenticate := auth.Middleware(tokenManager)
 
@@ -62,6 +71,10 @@ func main() {
 	categoryService := service.NewCategoryService(categoryRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryService, logger)
 
+	importRepo := repository.NewImportRepository(pool)
+	importService := service.NewImportService(importRepo, importQueue, cfg.ImportUploadDir, cfg.ImportMaxFileSize)
+	importHandler := handlers.NewImportHandler(importService, logger, cfg.ImportMaxFileSize)
+
 	srv := &http.Server{
 		Addr: ":" + cfg.ServerPort,
 		Handler: router.New(router.Handlers{
@@ -70,6 +83,7 @@ func main() {
 			Dashboard:    dashboardHandler,
 			Accounts:     accountHandler,
 			Categories:   categoryHandler,
+			Imports:      importHandler,
 		}, authenticate),
 	}
 
