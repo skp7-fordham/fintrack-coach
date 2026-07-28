@@ -54,12 +54,22 @@ func main() {
 	dashboardService := service.NewDashboardService(dashboardRepo)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardService, logger)
 
+	accountRepo := repository.NewAccountRepository(pool)
+	accountService := service.NewAccountService(accountRepo)
+	accountHandler := handlers.NewAccountHandler(accountService, logger)
+
+	categoryRepo := repository.NewCategoryRepository(pool)
+	categoryService := service.NewCategoryService(categoryRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService, logger)
+
 	srv := &http.Server{
 		Addr: ":" + cfg.ServerPort,
 		Handler: router.New(router.Handlers{
 			Auth:         authHandler,
 			Transactions: transactionHandler,
 			Dashboard:    dashboardHandler,
+			Accounts:     accountHandler,
+			Categories:   categoryHandler,
 		}, authenticate),
 	}
 

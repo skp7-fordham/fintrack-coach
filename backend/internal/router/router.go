@@ -10,6 +10,8 @@ type Handlers struct {
 	Auth         *handlers.AuthHandler
 	Transactions *handlers.TransactionHandler
 	Dashboard    *handlers.DashboardHandler
+	Accounts     *handlers.AccountHandler
+	Categories   *handlers.CategoryHandler
 }
 
 func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler {
@@ -25,6 +27,16 @@ func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler 
 	mux.Handle("GET /dashboard/category-spending", authenticate(http.HandlerFunc(h.Dashboard.CategorySpending)))
 	mux.Handle("GET /dashboard/monthly-trends", authenticate(http.HandlerFunc(h.Dashboard.MonthlyTrends)))
 	mux.Handle("GET /dashboard/recent-transactions", authenticate(http.HandlerFunc(h.Dashboard.RecentTransactions)))
+
+	mux.Handle("POST /accounts", authenticate(http.HandlerFunc(h.Accounts.Create)))
+	mux.Handle("GET /accounts", authenticate(http.HandlerFunc(h.Accounts.List)))
+	mux.Handle("PATCH /accounts/{id}", authenticate(http.HandlerFunc(h.Accounts.Update)))
+	mux.Handle("DELETE /accounts/{id}", authenticate(http.HandlerFunc(h.Accounts.Delete)))
+
+	mux.Handle("POST /categories", authenticate(http.HandlerFunc(h.Categories.Create)))
+	mux.Handle("GET /categories", authenticate(http.HandlerFunc(h.Categories.List)))
+	mux.Handle("PATCH /categories/{id}", authenticate(http.HandlerFunc(h.Categories.Update)))
+	mux.Handle("DELETE /categories/{id}", authenticate(http.HandlerFunc(h.Categories.Delete)))
 
 	return mux
 }
