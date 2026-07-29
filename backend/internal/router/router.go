@@ -13,6 +13,7 @@ type Handlers struct {
 	Accounts     *handlers.AccountHandler
 	Categories   *handlers.CategoryHandler
 	Imports      *handlers.ImportHandler
+	Coach        *handlers.CoachHandler
 }
 
 func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler {
@@ -43,6 +44,11 @@ func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler 
 	mux.Handle("GET /imports", authenticate(http.HandlerFunc(h.Imports.List)))
 	mux.Handle("GET /imports/{id}", authenticate(http.HandlerFunc(h.Imports.Get)))
 	mux.Handle("GET /imports/{id}/errors", authenticate(http.HandlerFunc(h.Imports.ListErrors)))
+
+	mux.Handle("POST /coach/chat", authenticate(http.HandlerFunc(h.Coach.Chat)))
+	mux.Handle("GET /coach/conversations", authenticate(http.HandlerFunc(h.Coach.ListConversations)))
+	mux.Handle("GET /coach/conversations/{id}", authenticate(http.HandlerFunc(h.Coach.GetConversation)))
+	mux.Handle("DELETE /coach/conversations/{id}", authenticate(http.HandlerFunc(h.Coach.DeleteConversation)))
 
 	return mux
 }

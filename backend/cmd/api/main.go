@@ -10,7 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/aiprovider"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/auth"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/coach"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
@@ -75,6 +77,20 @@ func main() {
 	importService := service.NewImportService(importRepo, importQueue, cfg.ImportUploadDir, cfg.ImportMaxFileSize)
 	importHandler := handlers.NewImportHandler(importService, logger, cfg.ImportMaxFileSize)
 
+	var llm coach.LLM
+	if cfg.AIAPIKey != "" {
+		llm = aiprovider.NewClient(cfg.AIAPIKey, cfg.AIBaseURL, cfg.AITimeout)
+		logger.Info("coach llm configured", "model", cfg.AIModel, "base_url", cfg.AIBaseURL)
+	} else {
+		logger.Warn("AI_API_KEY not set; coach chat will return unavailable")
+	}
+
+	toolRegistry := coach.NewToolRegistry(dashboardService, accountService, importService, logger)
+	coachAgent := coach.NewAgent(llm, toolRegistry, cfg.AIModel, cfg.AIMaxToolIterations, logger)
+	coachRepo := repository.NewCoachRepository(pool)
+	coachService := coach.NewService(coachRepo, coachAgent, logger)
+	coachHandler := handlers.NewCoachHandler(coachService, logger)
+
 	srv := &http.Server{
 		Addr: ":" + cfg.ServerPort,
 		Handler: router.New(router.Handlers{
@@ -84,6 +100,7 @@ func main() {
 			Accounts:     accountHandler,
 			Categories:   categoryHandler,
 			Imports:      importHandler,
+			Coach:        coachHandler,
 		}, authenticate),
 	}
 

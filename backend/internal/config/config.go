@@ -19,6 +19,11 @@ type Config struct {
 	ImportMaxFileSize       int64
 	ImportMaxRows           int
 	ImportWorkerConcurrency int
+	AIAPIKey                string
+	AIBaseURL               string
+	AIModel                 string
+	AITimeout               time.Duration
+	AIMaxToolIterations     int
 }
 
 func Load() (Config, error) {
@@ -52,6 +57,23 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("IMPORT_WORKER_CONCURRENCY must be at least 1")
 	}
 
+	aiTimeoutRaw := getEnv("AI_TIMEOUT", "30s")
+	aiTimeout, err := time.ParseDuration(aiTimeoutRaw)
+	if err != nil {
+		return Config{}, fmt.Errorf("AI_TIMEOUT is invalid: %w", err)
+	}
+	if aiTimeout <= 0 {
+		return Config{}, fmt.Errorf("AI_TIMEOUT must be greater than zero")
+	}
+
+	aiMaxIterations, err := getEnvInt("AI_MAX_TOOL_ITERATIONS", 5)
+	if err != nil {
+		return Config{}, err
+	}
+	if aiMaxIterations < 1 {
+		return Config{}, fmt.Errorf("AI_MAX_TOOL_ITERATIONS must be at least 1")
+	}
+
 	return Config{
 		ServerPort:              getEnv("SERVER_PORT", "8080"),
 		Environment:             getEnv("APP_ENV", "development"),
@@ -64,6 +86,11 @@ func Load() (Config, error) {
 		ImportMaxFileSize:       maxFileSize,
 		ImportMaxRows:           maxRows,
 		ImportWorkerConcurrency: concurrency,
+		AIAPIKey:                os.Getenv("AI_API_KEY"),
+		AIBaseURL:               getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
+		AIModel:                 getEnv("AI_MODEL", "gpt-4o-mini"),
+		AITimeout:               aiTimeout,
+		AIMaxToolIterations:     aiMaxIterations,
 	}, nil
 }
 
