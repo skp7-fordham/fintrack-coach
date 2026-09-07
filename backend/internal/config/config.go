@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type Config struct {
 	AIModel                 string
 	AITimeout               time.Duration
 	AIMaxToolIterations     int
+	CORSAllowedOrigins      []string
 }
 
 func Load() (Config, error) {
@@ -91,7 +93,20 @@ func Load() (Config, error) {
 		AIModel:                 getEnv("AI_MODEL", "gpt-4o-mini"),
 		AITimeout:               aiTimeout,
 		AIMaxToolIterations:     aiMaxIterations,
+		CORSAllowedOrigins:      splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")),
 	}, nil
+}
+
+func splitCSV(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func getEnv(key, fallback string) string {

@@ -66,8 +66,24 @@ go run ./cmd/import-worker
 
 Uploaded files are stored under `backend/var/imports` by default and are gitignored.
 
-## Project Structure
+## Frontend
 
-- `frontend` — Next.js user interface
-- `backend` — Go API and background workers
-- `docs` — architecture and API documentation
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). The API must allow the frontend origin via `CORS_ALLOWED_ORIGINS` (default `http://localhost:3000`).
+
+### Demo walkthrough
+
+1. Register a user
+2. Create an account and a few income/expense categories
+3. Add transactions or upload a CSV on Imports
+4. Review Dashboard charts
+5. Ask the AI Coach about balances, spending, or imports
+
+Categories referenced in CSV imports must already exist (case-insensitive name match).
+

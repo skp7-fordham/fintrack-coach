@@ -14,6 +14,7 @@ import (
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/auth"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/coach"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/cors"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/queue"
@@ -91,17 +92,19 @@ func main() {
 	coachService := coach.NewService(coachRepo, coachAgent, logger)
 	coachHandler := handlers.NewCoachHandler(coachService, logger)
 
+	apiHandler := router.New(router.Handlers{
+		Auth:         authHandler,
+		Transactions: transactionHandler,
+		Dashboard:    dashboardHandler,
+		Accounts:     accountHandler,
+		Categories:   categoryHandler,
+		Imports:      importHandler,
+		Coach:        coachHandler,
+	}, authenticate)
+
 	srv := &http.Server{
-		Addr: ":" + cfg.ServerPort,
-		Handler: router.New(router.Handlers{
-			Auth:         authHandler,
-			Transactions: transactionHandler,
-			Dashboard:    dashboardHandler,
-			Accounts:     accountHandler,
-			Categories:   categoryHandler,
-			Imports:      importHandler,
-			Coach:        coachHandler,
-		}, authenticate),
+		Addr:    ":" + cfg.ServerPort,
+		Handler: cors.Middleware(cfg.CORSAllowedOrigins)(apiHandler),
 	}
 
 	go func() {
