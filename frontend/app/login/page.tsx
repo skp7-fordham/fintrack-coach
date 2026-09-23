@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in to FinTrack Coach">
+    <AuthShell title="Welcome back" subtitle="Sign in to continue to FinTrack Coach.">
       <form onSubmit={onSubmit} className="space-y-4">
         <FormField label="Email" htmlFor="email">
           <input

@@ -21,10 +21,19 @@ type ImportQueue struct {
 	queueName string
 }
 
-func NewImportQueue(redisURL, queueName string) (*ImportQueue, error) {
+// ParseRedisURL accepts redis:// (plain) and rediss:// (TLS) URLs via go-redis.
+func ParseRedisURL(redisURL string) (*redis.Options, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse redis url: %w", err)
+	}
+	return opts, nil
+}
+
+func NewImportQueue(redisURL, queueName string) (*ImportQueue, error) {
+	opts, err := ParseRedisURL(redisURL)
+	if err != nil {
+		return nil, err
 	}
 	client := redis.NewClient(opts)
 

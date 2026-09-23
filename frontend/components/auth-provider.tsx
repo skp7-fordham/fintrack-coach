@@ -88,7 +88,10 @@ export function useAuth() {
 }
 
 export function getErrorMessage(error: unknown, fallback = "Something went wrong") {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
+  if (error instanceof ApiError) {
+    return error.message.startsWith("Request failed") ? fallback : error.message;
+  }
+  if (error instanceof TypeError) return fallback;
+  if (error instanceof Error) return error.message || fallback;
   return fallback;
 }

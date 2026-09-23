@@ -1,7 +1,7 @@
 "use client";
 
 import { moneyTone, formatMoney, formatSignedMoney } from "@/lib/format";
-import type { ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 
 export function MoneyDisplay({
   amount,
@@ -25,7 +25,7 @@ export function MoneyDisplay({
     ? formatSignedMoney(amount, currency)
     : formatMoney(amount, currency);
 
-  return <span className={`font-medium tabular-nums ${color} ${className}`}>{text}</span>;
+  return <span className={`font-semibold tabular-nums tracking-tight ${color} ${className}`}>{text}</span>;
 }
 
 export function SummaryCard({
@@ -38,9 +38,9 @@ export function SummaryCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-      <p className="text-sm text-muted">{label}</p>
-      <div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <div className="mt-2 text-2xl font-semibold tracking-[-0.025em]">{value}</div>
       {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>
   );
@@ -58,14 +58,25 @@ export function StatusBadge({ status }: { status: string }) {
     expense: "bg-danger-soft text-danger",
     transfer: "bg-slate-100 text-slate-700",
   };
+  const labels: Record<string, string> = {
+    completed: "Completed",
+    pending: "Pending",
+    failed: "Failed",
+    queued: "Queued",
+    processing: "Processing",
+    completed_with_errors: "Completed with errors",
+    income: "Income",
+    expense: "Expense",
+    transfer: "Transfer",
+  };
 
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+      className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${
         styles[status] ?? "bg-slate-100 text-slate-700"
       }`}
     >
-      {status.replaceAll("_", " ")}
+      {labels[status] ?? status.replaceAll("_", " ")}
     </span>
   );
 }
@@ -80,10 +91,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-card p-8">
-      <h3 className="text-lg font-medium text-foreground">{title}</h3>
-      <p className="max-w-lg text-sm text-muted">{description}</p>
-      {action}
+    <div className="flex flex-col items-start rounded-lg border border-dashed border-slate-300 bg-slate-50/50 p-6 sm:p-8">
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <p className="mt-1.5 max-w-lg text-sm leading-6 text-muted">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );
 }
@@ -96,13 +107,13 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-danger/20 bg-danger-soft p-4 text-danger">
+    <div className="rounded-lg border border-danger/20 bg-danger-soft p-4 text-danger">
       <p className="text-sm font-medium">{message}</p>
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded-lg bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm"
+          className="mt-3 rounded-md border border-danger/15 bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-white"
         >
           Try again
         </button>
@@ -115,7 +126,7 @@ export function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-200/70" />
+        <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-200/70" />
       ))}
     </div>
   );
@@ -132,25 +143,36 @@ export function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-sm text-muted hover:bg-slate-100"
+            className="rounded-md px-2 py-1 text-sm text-muted transition-colors hover:bg-slate-100 hover:text-foreground"
           >
             Close
           </button>
@@ -185,7 +207,7 @@ export function ConfirmDialog({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-border px-3 py-2 text-sm"
+          className="rounded-md border border-border px-3 py-2 text-sm transition-colors hover:bg-slate-50"
           disabled={pending}
         >
           Cancel
@@ -194,9 +216,9 @@ export function ConfirmDialog({
           type="button"
           onClick={onConfirm}
           disabled={pending}
-          className="rounded-lg bg-danger px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-danger px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? "Working…" : confirmLabel}
+          {pending ? "Deleting…" : confirmLabel}
         </button>
       </div>
     </Modal>
@@ -224,15 +246,15 @@ export function FormField({
 }
 
 export function inputClassName() {
-  return "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-slate-400";
+  return "w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-slate-400 hover:border-slate-300 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-muted";
 }
 
 export function primaryButtonClassName() {
-  return "inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60";
+  return "inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60";
 }
 
 export function secondaryButtonClassName() {
-  return "inline-flex items-center justify-center rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-50 disabled:opacity-60";
+  return "inline-flex items-center justify-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60";
 }
 
 export function Pagination({
@@ -272,6 +294,57 @@ export function Pagination({
   );
 }
 
+function renderInlineMarkdown(text: string): ReactNode[] {
+  return text
+    .split(/(\*\*[^*\n]+?\*\*)/g)
+    .filter(Boolean)
+    .map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={index} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        <span key={index}>{part}</span>
+      ),
+    );
+}
+
+function AssistantMessageContent({ content }: { content: string }) {
+  const lines = content.replaceAll("\r\n", "\n").split("\n");
+
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, index) => {
+        if (!line.trim()) {
+          return <div key={index} className="h-1" aria-hidden="true" />;
+        }
+
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+        if (bullet) {
+          return (
+            <div key={index} className="flex gap-2">
+              <span className="text-primary" aria-hidden="true">•</span>
+              <span>{renderInlineMarkdown(bullet[1])}</span>
+            </div>
+          );
+        }
+
+        const numbered = line.match(/^\s*(\d+\.)\s+(.+)$/);
+        if (numbered) {
+          return (
+            <div key={index} className="flex gap-2">
+              <span className="shrink-0 font-medium text-muted">{numbered[1]}</span>
+              <span>{renderInlineMarkdown(numbered[2])}</span>
+            </div>
+          );
+        }
+
+        return <p key={index}>{renderInlineMarkdown(line)}</p>;
+      })}
+    </div>
+  );
+}
+
 export function CoachMessageBubble({
   role,
   content,
@@ -283,18 +356,18 @@ export function CoachMessageBubble({
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[88%] px-4 py-3 text-sm leading-relaxed ${
           isUser
-            ? "bg-primary text-white"
-            : "border border-border bg-card text-foreground shadow-sm"
+            ? "rounded-[16px_16px_4px_16px] bg-primary text-white whitespace-pre-wrap"
+            : "rounded-[16px_16px_16px_4px] border border-border bg-slate-50/60 text-foreground"
         }`}
       >
         {!isUser ? (
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted">
+          <p className="mb-2 text-xs font-medium text-muted">
             Based on your FinTrack data
           </p>
         ) : null}
-        {content}
+        {isUser ? content : <AssistantMessageContent content={content} />}
       </div>
     </div>
   );

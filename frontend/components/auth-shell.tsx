@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BrandLockup } from "@/components/brand";
 
 export function AuthShell({
   title,
@@ -10,21 +11,16 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#99f6e4_0%,transparent_40%),radial-gradient(circle_at_bottom_right,#bae6fd_0%,transparent_35%)]" />
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-lg">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white">
-            F
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-foreground">FinTrack Coach</p>
-            <p className="text-xs text-muted">Money clarity with an AI coach</p>
-          </div>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-[0_18px_50px_-30px_rgba(15,23,42,0.45)]">
+        <div className="border-b border-border bg-slate-50/70 px-7 py-5">
+          <BrandLockup />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted">{subtitle}</p>
-        <div className="mt-6">{children}</div>
+        <div className="px-7 py-7 sm:px-8">
+          <h1 className="text-2xl font-semibold tracking-[-0.025em]">{title}</h1>
+          <p className="mt-1.5 text-sm leading-6 text-muted">{subtitle}</p>
+          <div className="mt-6">{children}</div>
+        </div>
       </div>
     </div>
   );

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useDeferredLoad } from "@/lib/use-deferred-load";
-import { currentYearMonthUTC, formatMoney } from "@/lib/format";
+import { currentYearMonthUTC, formatDateLabel, formatMoney } from "@/lib/format";
 import type {
   Account,
   CategorySpendingItem,
@@ -63,7 +63,7 @@ export default function DashboardPage() {
       setRecent(recentRes.data ?? []);
       setAccounts(accountsRes.data ?? []);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load dashboard"));
+      setError(getErrorMessage(err, "We couldn’t load your dashboard."));
     } finally {
       setLoading(false);
     }
@@ -91,10 +91,10 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between [&>header]:mb-0">
         <AppHeader
           title="Dashboard"
-          subtitle="A clear view of balances, spending, and recent activity"
+          subtitle="Monitor balances, spending patterns, and recent activity."
         />
         <label className="block text-sm">
           <span className="mb-1 block text-muted">Month</span>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
                 currencyHint
                   ? undefined
                   : accounts.length > 1
-                    ? "Combined numeric total across currencies"
+                    ? "Totals combined across currencies (not converted)"
                     : undefined
               }
             />
@@ -140,15 +140,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5">
               <h2 className="mb-4 text-base font-semibold">Category spending</h2>
               {spendingChart.length === 0 ? (
                 <EmptyState
-                  title="No spending this month"
-                  description="Add expense transactions or import a CSV to see category breakdowns."
+                  title="No spending recorded this month"
+                  description="Add transactions or import a CSV to see how your spending is distributed."
                   action={
                     <Link href="/transactions" className={primaryButtonClassName()}>
-                      Add a transaction
+                      Add transaction
                     </Link>
                   }
                 />
@@ -160,19 +160,19 @@ export default function DashboardPage() {
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={60} />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip formatter={(value) => formatMoney(Number(value), currencyHint)} />
-                      <Bar dataKey="amount" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="amount" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </section>
 
-            <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <section className="rounded-lg border border-border bg-card p-5">
               <h2 className="mb-4 text-base font-semibold">Monthly trends</h2>
               {trendsChart.length === 0 ? (
                 <EmptyState
-                  title="No trend data yet"
-                  description="Income and expense trends appear once you have recorded transactions."
+                  title="No financial trends yet"
+                  description="Record income and expenses to compare your activity over time."
                 />
               ) : (
                 <div className="h-72">
@@ -183,8 +183,8 @@ export default function DashboardPage() {
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip formatter={(value) => formatMoney(Number(value), currencyHint)} />
                       <Legend />
-                      <Bar dataKey="income" fill="#047857" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="expense" fill="#b91c1c" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="income" fill="var(--success)" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expense" fill="var(--danger)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
             </section>
           </div>
 
-          <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <section className="rounded-lg border border-border bg-card p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-base font-semibold">Recent transactions</h2>
               <Link href="/transactions" className="text-sm font-medium text-primary hover:underline">
@@ -201,14 +201,14 @@ export default function DashboardPage() {
             </div>
             {recent.length === 0 ? (
               <EmptyState
-                title="No recent activity"
-                description="Create your first account, add categories, then record or import transactions."
+                title="No recent transactions"
+                description="Add an account and record transactions to start building your financial overview."
                 action={
                   <div className="flex flex-wrap gap-2">
                     <Link href="/accounts" className={primaryButtonClassName()}>
-                      Create an account
+                      Add account
                     </Link>
-                    <Link href="/imports" className="rounded-lg border border-border px-4 py-2 text-sm">
+                    <Link href="/imports" className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-50">
                       Import CSV
                     </Link>
                   </div>
@@ -217,20 +217,20 @@ export default function DashboardPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="border-b border-border text-muted">
+                  <thead className="border-b border-border bg-slate-50/70 text-xs text-muted">
                     <tr>
-                      <th className="px-2 py-2 font-medium">Date</th>
-                      <th className="px-2 py-2 font-medium">Description</th>
-                      <th className="px-2 py-2 font-medium">Account</th>
-                      <th className="px-2 py-2 font-medium">Category</th>
-                      <th className="px-2 py-2 font-medium">Type</th>
-                      <th className="px-2 py-2 font-medium text-right">Amount</th>
+                      <th scope="col" className="px-2 py-2 font-medium">Date</th>
+                      <th scope="col" className="px-2 py-2 font-medium">Description</th>
+                      <th scope="col" className="px-2 py-2 font-medium">Account</th>
+                      <th scope="col" className="px-2 py-2 font-medium">Category</th>
+                      <th scope="col" className="px-2 py-2 font-medium">Type</th>
+                      <th scope="col" className="px-2 py-2 font-medium text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recent.map((txn) => (
-                      <tr key={txn.id} className="border-b border-border/70">
-                        <td className="px-2 py-3 whitespace-nowrap">{txn.transaction_date}</td>
+                      <tr key={txn.id} className="border-b border-border/70 transition-colors last:border-0 hover:bg-slate-50/60">
+                        <td className="px-2 py-3 whitespace-nowrap text-muted">{formatDateLabel(txn.transaction_date)}</td>
                         <td className="px-2 py-3">
                           <div className="font-medium">{txn.description}</div>
                           {txn.merchant ? (

@@ -40,30 +40,39 @@ function CategoryList({
   if (items.length === 0) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-base font-semibold">{title}</h2>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        <span className="text-xs text-muted">{items.length} total</span>
+      </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         {items.map((category) => (
-          <article key={category.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center gap-3">
+          <article
+            key={category.id}
+            className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 last:border-0"
+          >
+            <div className="flex min-w-0 items-center gap-3">
               <span
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-sm"
-                style={{ backgroundColor: category.color || "#e2e8f0" }}
+                className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white"
+                style={{ backgroundColor: category.color || "#94a3b8" }}
                 aria-hidden
-              >
-                {category.icon || "•"}
-              </span>
-              <div>
-                <h3 className="font-medium">{category.name}</h3>
+              />
+              {category.icon ? (
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-sm" aria-hidden>
+                  {category.icon}
+                </span>
+              ) : null}
+              <div className="flex min-w-0 items-center gap-3">
+                <h3 className="truncate text-sm font-medium">{category.name}</h3>
                 <StatusBadge status={category.category_type} />
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
-              <button type="button" className={secondaryButtonClassName()} onClick={() => onEdit(category)}>
+            <div className="flex shrink-0 gap-1">
+              <button type="button" className={`${secondaryButtonClassName()} px-3 py-1.5`} onClick={() => onEdit(category)}>
                 Edit
               </button>
               <button
                 type="button"
-                className="rounded-lg border border-danger/30 px-4 py-2 text-sm text-danger"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
                 onClick={() => onDelete(category)}
               >
                 Delete
@@ -100,7 +109,7 @@ function CategoryForm({
           <option value="income">Income</option>
         </select>
       </FormField>
-      <FormField label="Colour" htmlFor="cat_color">
+      <FormField label="Color" htmlFor="cat_color">
         <div className="flex gap-2">
           <input id="cat_color" type="color" className="h-10 w-14 rounded border border-border" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
           <input className={inputClassName()} value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
@@ -136,7 +145,7 @@ export default function CategoriesPage() {
       const res = await api.listCategories(filter === "all" ? undefined : filter);
       setCategories(res.data ?? []);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load categories"));
+      setError(getErrorMessage(err, "We couldn’t load your categories."));
     } finally {
       setLoading(false);
     }
@@ -221,16 +230,19 @@ export default function CategoriesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <AppHeader title="Categories" subtitle="Organise income and expense labels" />
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between [&>header]:mb-0">
+        <AppHeader
+          title="Categories"
+          subtitle="Organize income and expenses into meaningful spending groups."
+        />
         <div className="flex flex-wrap gap-2">
           {(["all", "income", "expense"] as const).map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setFilter(value)}
-              className={`rounded-lg px-3 py-2 text-sm capitalize ${
-                filter === value ? "bg-primary text-white" : "border border-border bg-card"
+              className={`rounded-md px-3 py-2 text-sm capitalize transition-colors ${
+                filter === value ? "bg-primary-soft font-medium text-primary" : "border border-border bg-card hover:bg-slate-50"
               }`}
             >
               {value}
@@ -255,8 +267,12 @@ export default function CategoriesPage() {
 
       {!loading && !error && categories.length === 0 ? (
         <EmptyState
-          title="Add a category"
-          description="Categories help you understand where money goes. Create income and expense labels before importing CSV files."
+          title={filter === "all" ? "No categories yet" : `No ${filter} categories`}
+          description={
+            filter === "all"
+              ? "Create categories to organize your income and expenses."
+              : `Add a ${filter} category or view all categories.`
+          }
           action={
             <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
               Add category
@@ -266,13 +282,13 @@ export default function CategoriesPage() {
       ) : null}
 
       {!loading && categories.length > 0 ? (
-        <div className="space-y-8">
-          <CategoryList items={grouped.expense} title="Expense" onEdit={beginEdit} onDelete={setDeleteCategory} />
-          <CategoryList items={grouped.income} title="Income" onEdit={beginEdit} onDelete={setDeleteCategory} />
+        <div className="space-y-6">
+          <CategoryList items={grouped.expense} title="Expense categories" onEdit={beginEdit} onDelete={setDeleteCategory} />
+          <CategoryList items={grouped.income} title="Income categories" onEdit={beginEdit} onDelete={setDeleteCategory} />
         </div>
       ) : null}
 
-      <Modal open={createOpen} title="Create category" onClose={() => setCreateOpen(false)}>
+      <Modal open={createOpen} title="Add category" onClose={() => setCreateOpen(false)}>
         <CategoryForm form={form} setForm={setForm} error={formError} pending={pending} onSubmit={onCreate} />
       </Modal>
 

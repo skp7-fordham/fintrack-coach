@@ -2,13 +2,37 @@
 
 FinTrack Coach is an agentic personal-finance application that helps users import transactions, analyze spending patterns, identify recurring expenses, create budgets, track savings goals, and receive personalized financial insights.
 
+## Live demo (placeholders)
+
+Replace these after the first production deploy:
+
+- Frontend: `https://<your-vercel-app>.vercel.app`
+- Backend health: `https://<your-render-service>.onrender.com/health`
+
+## Architecture
+
+```
+Browser
+  ↓
+Vercel / Next.js
+  ↓
+Render Free / Go API
+  ├── embedded CSV worker
+  ↓
+  ├── Neon PostgreSQL
+  ├── Upstash Redis
+  └── OpenAI API
+```
+
+Hosting is intended to stay on current free tiers (Vercel Hobby, Render Free web service, Neon Free, Upstash Free Redis). OpenAI is **not** free hosting; the API uses prepaid OpenAI credits and the key stays on the backend.
+
 ## Tech Stack
 
-- Next.js / TypeScript (frontend)
-- Go (API + import worker)
-- PostgreSQL
-- Redis
-- Docker Compose
+- Next.js / TypeScript (frontend, Vercel)
+- Go (API + optional embedded import worker, Render)
+- PostgreSQL (local Docker or Neon)
+- Redis (local Docker or Upstash)
+- OpenAI-compatible chat API (backend only)
 
 ## Local development
 
@@ -27,6 +51,8 @@ cd backend
 cp .env.example .env
 # set JWT_SECRET to a long random value
 ```
+
+Leave `RUN_IMPORT_WORKER_IN_API=false` for the two-process local setup.
 
 ### 3. Apply migrations
 
@@ -58,13 +84,15 @@ set +a
 go run ./cmd/import-worker
 ```
 
+To mimic Render Free in one process, set `RUN_IMPORT_WORKER_IN_API=true` and skip the separate worker.
+
 ## CSV transaction import
 
-1. `POST /imports/transactions` (multipart) creates a job, stores the CSV under `IMPORT_UPLOAD_DIR`, and enqueues the job ID in Redis.
-2. `cmd/import-worker` pops jobs with `BRPOP`, validates rows, inserts valid transactions atomically, updates account balances, and records row errors.
+1. `POST /imports/transactions` (multipart) creates a job, stores the CSV under `IMPORT_UPLOAD_DIR`, and enqueues the job ID in Redis immediately.
+2. `cmd/import-worker` (local) or the embedded API worker (production) pops jobs with `BRPOP`, validates rows, inserts valid transactions atomically, updates account balances, and records row errors.
 3. Poll `GET /imports/{id}` for status. Use `GET /imports/{id}/errors` for row failures.
 
-Uploaded files are stored under `backend/var/imports` by default and are gitignored.
+Uploaded files are stored under `backend/var/imports` locally (gitignored) and `/tmp/fintrack-imports` on Render. Files are deleted after a terminal job status.
 
 ## Frontend
 
@@ -87,3 +115,15 @@ Open [http://localhost:3000](http://localhost:3000). The API must allow the fron
 
 Categories referenced in CSV imports must already exist (case-insensitive name match).
 
+## Deployment
+
+Step-by-step free-tier setup (Neon, Upstash, Render, Vercel, migrations, CORS, smoke tests) is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+Do not create a paid Render Background Worker. Production uses `RUN_IMPORT_WORKER_IN_API=true` on the single Free web service.
+
+## Known free-tier limitations
+
+- Render Free sleeps when idle; the first request after sleep is a cold start.
+- Render Free disk is ephemeral. A CSV import may fail if the instance restarts between upload and processing. Object storage is a future upgrade, not part of this MVP.
+- Neon / Upstash / Vercel free quotas are enough for a portfolio demo, not high production traffic.
+- OpenAI usage is separate from hosting cost.

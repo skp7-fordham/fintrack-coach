@@ -16,8 +16,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!ready || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted">
-        Checking session…
+      <div className="flex min-h-screen items-center justify-center" role="status" aria-label="Checking session">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-primary" />
       </div>
     );
   }
@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:flex">
       <AppSidebar />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main id="main-content" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }

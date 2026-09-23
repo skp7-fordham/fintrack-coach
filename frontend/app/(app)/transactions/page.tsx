@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useState } from "react";
 import { AppHeader } from "@/components/app-shell";
 import { getErrorMessage } from "@/components/auth-provider";
@@ -18,6 +19,7 @@ import {
 } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useDeferredLoad } from "@/lib/use-deferred-load";
+import { formatDateLabel } from "@/lib/format";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 export default function TransactionsPage() {
@@ -71,7 +73,7 @@ export default function TransactionsPage() {
       setTransactions(res.data ?? []);
       setTotalPages(res.pagination.total_pages || 1);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load transactions"));
+      setError(getErrorMessage(err, "We couldn’t load your transactions."));
     } finally {
       setLoading(false);
     }
@@ -82,6 +84,10 @@ export default function TransactionsPage() {
 
   const accountCurrency = (accountId: string) =>
     accounts.find((a) => a.id === accountId)?.currency;
+  const accountName = (accountId: string) =>
+    accounts.find((a) => a.id === accountId)?.name ?? "Unknown account";
+  const categoryName = (categoryId: string | null) =>
+    categories.find((category) => category.id === categoryId)?.name ?? "Uncategorized";
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -117,8 +123,11 @@ export default function TransactionsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <AppHeader title="Transactions" subtitle="Record and filter your money movement" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between [&>header]:mb-0">
+        <AppHeader
+          title="Transactions"
+          subtitle="Review and record income and expenses across your accounts."
+        />
         <button
           type="button"
           className={primaryButtonClassName()}
@@ -136,7 +145,7 @@ export default function TransactionsPage() {
         </button>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm md:grid-cols-5">
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <select
           className={inputClassName()}
           value={filters.account_id}
@@ -206,43 +215,46 @@ export default function TransactionsPage() {
 
       {!loading && !error && transactions.length === 0 ? (
         <EmptyState
-          title="Add a transaction"
-          description="Create income or expense entries, or import a CSV once accounts and categories exist."
+          title="No transactions yet"
+          description="Add your first transaction or import a CSV to start tracking activity."
           action={
             <div className="flex flex-wrap gap-2">
               <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
                 Add transaction
               </button>
-              <a href="/imports" className={secondaryButtonClassName()}>Import CSV</a>
+              <Link href="/imports" className={secondaryButtonClassName()}>Import CSV</Link>
             </div>
           }
         />
       ) : null}
 
       {!loading && transactions.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border text-muted">
+              <thead className="border-b border-border bg-slate-50/70 text-xs text-muted">
                 <tr>
-                  <th className="px-2 py-2 font-medium">Date</th>
-                  <th className="px-2 py-2 font-medium">Description</th>
-                  <th className="px-2 py-2 font-medium">Type</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium text-right">Amount</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Date</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Transaction</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Type</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Status</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((txn) => (
-                  <tr key={txn.id} className="border-b border-border/70">
-                    <td className="px-2 py-3 whitespace-nowrap">{txn.transaction_date}</td>
-                    <td className="px-2 py-3">
+                  <tr key={txn.id} className="border-b border-border/70 transition-colors last:border-0 hover:bg-slate-50/60">
+                    <td className="px-4 py-3 whitespace-nowrap text-muted">{formatDateLabel(txn.transaction_date)}</td>
+                    <td className="px-4 py-3">
                       <div className="font-medium">{txn.description}</div>
-                      {txn.merchant ? <div className="text-xs text-muted">{txn.merchant}</div> : null}
+                      <div className="mt-0.5 text-xs text-muted">
+                        {txn.merchant ? `${txn.merchant} · ` : ""}
+                        {accountName(txn.account_id)} · {categoryName(txn.category_id)}
+                      </div>
                     </td>
-                    <td className="px-2 py-3"><StatusBadge status={txn.transaction_type} /></td>
-                    <td className="px-2 py-3"><StatusBadge status={txn.transaction_status} /></td>
-                    <td className="px-2 py-3 text-right">
+                    <td className="px-4 py-3"><StatusBadge status={txn.transaction_type} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={txn.transaction_status} /></td>
+                    <td className="px-4 py-3 text-right">
                       <MoneyDisplay
                         amount={txn.transaction_type === "expense" ? `-${txn.amount}` : txn.amount}
                         currency={accountCurrency(txn.account_id)}
@@ -254,7 +266,9 @@ export default function TransactionsPage() {
               </tbody>
             </table>
           </div>
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          <div className="border-t border-border px-4 pb-4">
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
         </div>
       ) : null}
 
@@ -300,7 +314,7 @@ export default function TransactionsPage() {
           </FormField>
           {formError ? <p className="text-sm text-danger">{formError}</p> : null}
           <button type="submit" className={primaryButtonClassName()} disabled={pending}>
-            {pending ? "Saving…" : "Create transaction"}
+            {pending ? "Saving…" : "Add transaction"}
           </button>
         </form>
       </Modal>

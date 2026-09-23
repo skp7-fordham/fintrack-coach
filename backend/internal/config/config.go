@@ -20,6 +20,7 @@ type Config struct {
 	ImportMaxFileSize       int64
 	ImportMaxRows           int
 	ImportWorkerConcurrency int
+	RunImportWorkerInAPI    bool
 	AIAPIKey                string
 	AIBaseURL               string
 	AIModel                 string
@@ -59,6 +60,11 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("IMPORT_WORKER_CONCURRENCY must be at least 1")
 	}
 
+	runWorkerInAPI, err := getEnvBool("RUN_IMPORT_WORKER_IN_API", false)
+	if err != nil {
+		return Config{}, err
+	}
+
 	aiTimeoutRaw := getEnv("AI_TIMEOUT", "30s")
 	aiTimeout, err := time.ParseDuration(aiTimeoutRaw)
 	if err != nil {
@@ -76,8 +82,13 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("AI_MAX_TOOL_ITERATIONS must be at least 1")
 	}
 
+	origins, err := parseCORSOrigins(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
-		ServerPort:              getEnv("SERVER_PORT", "8080"),
+		ServerPort:              listenPort(),
 		Environment:             getEnv("APP_ENV", "development"),
 		DatabaseURL:             getEnv("DATABASE_URL", "postgres://fintrack:fintrack@localhost:5433/fintrack?sslmode=disable"),
 		JWTSecret:               secret,
@@ -88,25 +99,46 @@ func Load() (Config, error) {
 		ImportMaxFileSize:       maxFileSize,
 		ImportMaxRows:           maxRows,
 		ImportWorkerConcurrency: concurrency,
+		RunImportWorkerInAPI:    runWorkerInAPI,
 		AIAPIKey:                os.Getenv("AI_API_KEY"),
 		AIBaseURL:               getEnv("AI_BASE_URL", "https://api.openai.com/v1"),
 		AIModel:                 getEnv("AI_MODEL", "gpt-4o-mini"),
 		AITimeout:               aiTimeout,
 		AIMaxToolIterations:     aiMaxIterations,
-		CORSAllowedOrigins:      splitCSV(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")),
+		CORSAllowedOrigins:      origins,
 	}, nil
 }
 
-func splitCSV(raw string) []string {
+// listenPort prefers Render's PORT over the local SERVER_PORT default.
+func listenPort() string {
+	if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
+		return port
+	}
+	return getEnv("SERVER_PORT", "8080")
+}
+
+func parseCORSOrigins(raw string) ([]string, error) {
 	parts := strings.Split(raw, ",")
 	out := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
+		if part == "" {
+			continue
 		}
+		if part == "*" {
+			return nil, fmt.Errorf("CORS_ALLOWED_ORIGINS must not include * for authenticated APIs")
+		}
+		if _, ok := seen[part]; ok {
+			continue
+		}
+		seen[part] = struct{}{}
+		out = append(out, part)
 	}
-	return out
+	if len(out) == 0 {
+		return nil, fmt.Errorf("CORS_ALLOWED_ORIGINS must include at least one origin")
+	}
+	return out, nil
 }
 
 func getEnv(key, fallback string) string {
@@ -114,6 +146,18 @@ func getEnv(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func getEnvBool(key string, fallback bool) (bool, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%s is invalid: %w", key, err)
+	}
+	return value, nil
 }
 
 func getEnvInt(key string, fallback int) (int, error) {

@@ -1,6 +1,11 @@
 # FinTrack Coach — local developer commands
 #
-# Database URL points at the Docker Postgres published on host port 5433.
+# Default database URL points at the Docker Postgres published on host port 5433.
+# For Neon (or any hosted Postgres), pass DATABASE_URL explicitly so SSL settings
+# from the provider connection string are preserved:
+#
+#   DATABASE_URL='postgres://USER:PASSWORD@HOST/DB?sslmode=require' make migrate-up
+#
 DATABASE_URL ?= postgres://fintrack:fintrack@localhost:5433/fintrack?sslmode=disable
 
 # Run migrate from the backend module so go.mod pins the CLI version.

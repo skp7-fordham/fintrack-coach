@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useState } from "react";
+import { Banknote, Landmark, PiggyBank, WalletCards } from "lucide-react";
 import { AppHeader } from "@/components/app-shell";
 import { getErrorMessage } from "@/components/auth-provider";
 import {
@@ -27,6 +28,20 @@ const emptyCreate = {
   initial_balance: "0.00",
 };
 
+function AccountIcon({ type }: { type: string }) {
+  const iconClass = "h-5 w-5";
+  switch (type) {
+    case "savings":
+      return <PiggyBank className={iconClass} strokeWidth={1.8} aria-hidden />;
+    case "cash":
+      return <Banknote className={iconClass} strokeWidth={1.8} aria-hidden />;
+    case "checking":
+      return <Landmark className={iconClass} strokeWidth={1.8} aria-hidden />;
+    default:
+      return <WalletCards className={iconClass} strokeWidth={1.8} aria-hidden />;
+  }
+}
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +61,7 @@ export default function AccountsPage() {
       const res = await api.listAccounts();
       setAccounts(res.data ?? []);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load accounts"));
+      setError(getErrorMessage(err, "We couldn’t load your accounts."));
     } finally {
       setLoading(false);
     }
@@ -112,8 +127,11 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <AppHeader title="Accounts" subtitle="Track balances across your financial accounts" />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between [&>header]:mb-0">
+        <AppHeader
+          title="Accounts"
+          subtitle="Manage the accounts that make up your financial picture."
+        />
         <button
           type="button"
           className={primaryButtonClassName()}
@@ -123,7 +141,7 @@ export default function AccountsPage() {
             setCreateOpen(true);
           }}
         >
-          Create account
+          Add account
         </button>
       </div>
 
@@ -132,11 +150,11 @@ export default function AccountsPage() {
 
       {!loading && !error && accounts.length === 0 ? (
         <EmptyState
-          title="Create your first account"
-          description="Add a checking, savings, or credit account to start recording transactions."
+          title="No accounts yet"
+          description="Add an account to start tracking balances and transactions."
           action={
             <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
-              Create account
+              Add account
             </button>
           }
         />
@@ -145,16 +163,22 @@ export default function AccountsPage() {
       {!loading && accounts.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {accounts.map((account) => (
-            <article key={account.id} className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <article key={account.id} className="rounded-lg border border-border bg-card p-5">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary-soft text-primary">
+                    <AccountIcon type={account.account_type} />
+                  </span>
+                  <div className="min-w-0">
                   <h2 className="text-lg font-semibold">{account.name}</h2>
                   <p className="text-sm text-muted">
                     {formatAccountType(account.account_type)} · {account.currency}
                   </p>
+                  </div>
                 </div>
               </div>
-              <p className="mt-4 text-2xl font-semibold">
+              <p className="mt-5 text-xs font-medium text-muted">Current balance</p>
+              <p className="mt-1 text-2xl font-semibold">
                 <MoneyDisplay amount={account.current_balance} currency={account.currency} />
               </p>
               <div className="mt-5 flex gap-2">
@@ -175,7 +199,7 @@ export default function AccountsPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg border border-danger/30 px-4 py-2 text-sm text-danger"
+                  className="rounded-md border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
                   onClick={() => {
                     setFormError("");
                     setDeleteAccount(account);
@@ -189,7 +213,7 @@ export default function AccountsPage() {
         </div>
       ) : null}
 
-      <Modal open={createOpen} title="Create account" onClose={() => setCreateOpen(false)}>
+      <Modal open={createOpen} title="Add account" onClose={() => setCreateOpen(false)}>
         <form onSubmit={onCreate} className="space-y-4">
           <FormField label="Name" htmlFor="name">
             <input id="name" required className={inputClassName()} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -209,7 +233,7 @@ export default function AccountsPage() {
           </FormField>
           {formError ? <p className="text-sm text-danger">{formError}</p> : null}
           <button type="submit" className={primaryButtonClassName()} disabled={pending}>
-            {pending ? "Saving…" : "Create account"}
+            {pending ? "Saving…" : "Add account"}
           </button>
         </form>
       </Modal>

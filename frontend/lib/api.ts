@@ -30,11 +30,19 @@ type DataResponse<T> = { data: T };
 type ListResponse<T> = { data: T[]; pagination: Pagination };
 
 function apiBaseUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+  const raw =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (process.env.NODE_ENV !== "production" ? "http://localhost:8080" : "");
+  const base = raw.trim().replace(/\/+$/, "");
   if (!base) {
     throw new ApiError("NEXT_PUBLIC_API_BASE_URL is not configured", 500);
   }
   return base;
+}
+
+function apiURL(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${apiBaseUrl()}${normalizedPath}`;
 }
 
 function handleUnauthorized(): void {
@@ -76,7 +84,7 @@ async function request<T>(
     }
   }
 
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
+  const response = await fetch(apiURL(path), {
     ...options,
     headers,
   });

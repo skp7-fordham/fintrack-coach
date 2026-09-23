@@ -53,7 +53,7 @@ export default function ImportsPage() {
         setAccountId(accountsRes.data[0].id);
       }
     } catch (err) {
-      if (mounted.current) setError(getErrorMessage(err, "Failed to load imports"));
+      if (mounted.current) setError(getErrorMessage(err, "We couldn’t load your CSV imports."));
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -108,7 +108,7 @@ export default function ImportsPage() {
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError("File exceeds 5 MiB limit");
+      setUploadError("File exceeds the 5 MB limit");
       return;
     }
 
@@ -138,16 +138,16 @@ export default function ImportsPage() {
   return (
     <div>
       <AppHeader
-        title="Imports"
-        subtitle="Upload CSV transaction files and monitor job progress"
+        title="CSV Imports"
+        subtitle="Upload transaction files and review processing results."
       />
 
-      <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-        <h2 className="text-base font-semibold">Upload CSV</h2>
+      <section className="mb-6 rounded-lg border border-border bg-card p-5">
+        <h2 className="text-base font-semibold">Import transactions</h2>
         <p className="mt-1 text-sm text-muted">
-          Required columns: <code>date,description,merchant,amount,type,category,notes</code>
+          Select an account and upload a CSV with these columns: <code>date, description, merchant, amount, type, category, notes</code>.
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+        <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-3 font-mono text-xs text-slate-100">
 {`date,description,merchant,amount,type,category,notes
 2026-07-01,Grocery run,Fresh Mart,84.20,expense,Groceries,
 2026-07-02,Payday,,3200.00,income,Salary,Biweekly pay`}
@@ -172,7 +172,7 @@ export default function ImportsPage() {
           </FormField>
           <div className="flex items-end">
             <button type="submit" className={primaryButtonClassName()} disabled={pending}>
-              {pending ? "Uploading…" : "Upload"}
+              {pending ? "Importing…" : "Import CSV"}
             </button>
           </div>
         </form>
@@ -184,37 +184,37 @@ export default function ImportsPage() {
 
       {!loading && !error && jobs.length === 0 ? (
         <EmptyState
-          title="Import transactions from CSV"
-          description="Create an account and matching categories first, then upload a CSV to populate your ledger."
+          title="No imports yet"
+          description="Upload a CSV file to add transactions in bulk."
         />
       ) : null}
 
       {!loading && jobs.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border text-muted">
+              <thead className="border-b border-border bg-slate-50/70 text-xs text-muted">
                 <tr>
-                  <th className="px-2 py-2 font-medium">File</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium">Progress</th>
-                  <th className="px-2 py-2 font-medium">Created</th>
-                  <th className="px-2 py-2 font-medium">Actions</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">File</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Status</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Results</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Uploaded</th>
+                  <th scope="col" className="px-4 py-2.5 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-border/70">
-                    <td className="px-2 py-3">{job.original_filename}</td>
-                    <td className="px-2 py-3"><StatusBadge status={job.status} /></td>
-                    <td className="px-2 py-3 text-muted">
-                      {job.successful_rows} ok / {job.failed_rows} failed / {job.total_rows} total
+                  <tr key={job.id} className="border-b border-border/70 transition-colors last:border-0 hover:bg-slate-50/60">
+                    <td className="px-4 py-3 font-medium">{job.original_filename}</td>
+                    <td className="px-4 py-3"><StatusBadge status={job.status} /></td>
+                    <td className="px-4 py-3 text-muted">
+                      {job.successful_rows} imported · {job.failed_rows} issues · {job.total_rows} rows
                     </td>
-                    <td className="px-2 py-3 whitespace-nowrap">{new Date(job.created_at).toLocaleString()}</td>
-                    <td className="px-2 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap text-muted">{new Date(job.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-3">
                       {job.failed_rows > 0 ? (
                         <button type="button" className={secondaryButtonClassName()} onClick={() => void openErrors(job)}>
-                          View errors
+                          View issues
                         </button>
                       ) : (
                         <span className="text-xs text-muted">—</span>
@@ -225,13 +225,15 @@ export default function ImportsPage() {
               </tbody>
             </table>
           </div>
-          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          <div className="border-t border-border px-4 pb-4">
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
         </div>
       ) : null}
 
-      <Modal open={Boolean(errorsJob)} title="Import row errors" onClose={() => setErrorsJob(null)}>
+      <Modal open={Boolean(errorsJob)} title="Import issues" onClose={() => setErrorsJob(null)}>
         {rowErrors.length === 0 ? (
-          <p className="text-sm text-muted">No row errors found.</p>
+          <p className="text-sm text-muted">No issues were found for this import.</p>
         ) : (
           <div className="max-h-80 space-y-3 overflow-y-auto">
             {rowErrors.map((err) => (

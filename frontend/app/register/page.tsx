@@ -38,7 +38,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthShell title="Create your account" subtitle="Start tracking with FinTrack Coach">
+    <AuthShell title="Create your account" subtitle="Start tracking and understanding your finances.">
       <form onSubmit={onSubmit} className="space-y-4">
         <FormField label="Email" htmlFor="email">
           <input

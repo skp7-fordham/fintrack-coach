@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/cors"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/handlers"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/importworker"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/queue"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/repository"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/router"
@@ -29,6 +31,11 @@ func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Error("failed to load config", "err", err)
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(cfg.ImportUploadDir, 0o750); err != nil {
+		logger.Error("failed to create import upload directory", "dir", cfg.ImportUploadDir, "err", err)
 		os.Exit(1)
 	}
 
@@ -77,6 +84,7 @@ func main() {
 	importRepo := repository.NewImportRepository(pool)
 	importService := service.NewImportService(importRepo, importQueue, cfg.ImportUploadDir, cfg.ImportMaxFileSize)
 	importHandler := handlers.NewImportHandler(importService, logger, cfg.ImportMaxFileSize)
+	importProcessor := service.NewImportProcessor(importRepo, cfg.ImportMaxRows, logger)
 
 	var llm coach.LLM
 	if cfg.AIAPIKey != "" {
@@ -107,6 +115,21 @@ func main() {
 		Handler: cors.Middleware(cfg.CORSAllowedOrigins)(apiHandler),
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	var workerWG sync.WaitGroup
+	if cfg.RunImportWorkerInAPI {
+		logger.Info(
+			"starting embedded import worker",
+			"concurrency", cfg.ImportWorkerConcurrency,
+			"upload_dir", cfg.ImportUploadDir,
+		)
+		importworker.Start(ctx, &workerWG, importQueue, importProcessor, cfg.ImportWorkerConcurrency, logger)
+	} else {
+		logger.Info("embedded import worker disabled; run cmd/import-worker separately")
+	}
+
 	go func() {
 		logger.Info("starting server", "addr", srv.Addr, "env", cfg.Environment)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -114,9 +137,6 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	<-ctx.Done()
 	logger.Info("shutting down server")
@@ -127,6 +147,17 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Error("graceful shutdown failed", "err", err)
 		os.Exit(1)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		workerWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		logger.Warn("import workers did not stop before shutdown timeout")
 	}
 
 	logger.Info("server stopped")

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FinTrack Coach",
-  description: "Personal finance tracking with an AI coach",
+  description: "Spending insights and AI guidance for your personal finances.",
 };
 
 export default function RootLayout({

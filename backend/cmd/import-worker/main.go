@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,10 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/config"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/database"
+	"github.com/skp7-fordham/fintrack-coach/backend/internal/importworker"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/queue"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/repository"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/service"
@@ -54,31 +52,7 @@ func main() {
 	defer stop()
 
 	var wg sync.WaitGroup
-	for i := 0; i < cfg.ImportWorkerConcurrency; i++ {
-		wg.Add(1)
-		go func(workerID int) {
-			defer wg.Done()
-			logger.Info("import worker started", "worker_id", workerID)
-			for {
-				jobID, err := importQueue.Dequeue(ctx)
-				if err != nil {
-					if errors.Is(err, context.Canceled) || errors.Is(err, redis.ErrClosed) {
-						logger.Info("import worker stopping", "worker_id", workerID)
-						return
-					}
-					logger.Error("failed to dequeue import job", "worker_id", workerID, "err", err)
-					select {
-					case <-ctx.Done():
-						return
-					case <-time.After(time.Second):
-					}
-					continue
-				}
-
-				processor.ProcessJob(ctx, jobID)
-			}
-		}(i + 1)
-	}
+	importworker.Start(ctx, &wg, importQueue, processor, cfg.ImportWorkerConcurrency, logger)
 
 	<-ctx.Done()
 	logger.Info("shutting down import worker")

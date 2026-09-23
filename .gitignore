@@ -36,3 +36,5 @@ redis-data/
 uploads/
 backend/var/
 var/
+*.csv
+!testdata/*.csv
