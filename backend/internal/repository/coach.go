@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,34 @@ type CoachRepository struct {
 
 func NewCoachRepository(pool *pgxpool.Pool) *CoachRepository {
 	return &CoachRepository{pool: pool}
+}
+
+func (r *CoachRepository) ConsumeDemoAIMessage(
+	ctx context.Context,
+	userID string,
+	usageDate time.Time,
+	limit int,
+) (bool, error) {
+	const query = `
+		INSERT INTO demo_ai_daily_usage (user_id, usage_date, message_count)
+		VALUES ($1, $2::date, 1)
+		ON CONFLICT (user_id, usage_date)
+		DO UPDATE SET
+			message_count = demo_ai_daily_usage.message_count + 1,
+			updated_at = NOW()
+		WHERE demo_ai_daily_usage.message_count < $3
+		RETURNING message_count
+	`
+
+	var count int
+	err := r.pool.QueryRow(ctx, query, userID, usageDate.UTC().Format("2006-01-02"), limit).Scan(&count)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("consume demo AI message: %w", err)
+	}
+	return true, nil
 }
 
 func (r *CoachRepository) CreateConversation(

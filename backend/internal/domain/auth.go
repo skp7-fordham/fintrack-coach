@@ -6,15 +6,18 @@ import (
 )
 
 var (
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrInvalidCredentials = errors.New("invalid email or password")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrEmailAlreadyExists  = errors.New("email already exists")
+	ErrInvalidCredentials  = errors.New("invalid email or password")
+	ErrUserNotFound        = errors.New("user not found")
+	ErrDemoModeUnavailable = errors.New("demo mode unavailable")
+	ErrDemoAILimitReached  = errors.New("demo AI limit reached")
 )
 
 // User is the public user representation (never includes password hash).
 type User struct {
 	ID        string
 	Email     string
+	IsDemo    bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -49,4 +52,5 @@ type AuthResult struct {
 type TokenClaims struct {
 	UserID string
 	Email  string
+	IsDemo bool
 }

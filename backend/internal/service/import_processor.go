@@ -17,6 +17,7 @@ import (
 type importProcessorRepository interface {
 	GetJobByIDInternal(ctx context.Context, jobID string) (*domain.TransactionImportJob, error)
 	MarkJobProcessing(ctx context.Context, jobID string) (*domain.TransactionImportJob, error)
+	IsDemoUser(ctx context.Context, userID string) (bool, error)
 	UpdateJobProgress(ctx context.Context, jobID string, totalRows, processedRows, successfulRows, failedRows int) error
 	CompleteJob(ctx context.Context, jobID, status string, totalRows, processedRows, successfulRows, failedRows int, errorMessage *string) error
 	FailJob(ctx context.Context, jobID, message string) error
@@ -53,6 +54,22 @@ func (p *ImportProcessor) ProcessJob(ctx context.Context, jobID string) {
 	}
 
 	p.logger.Info("import job processing", "job_id", job.ID, "user_id", job.UserID, "account_id", job.AccountID)
+
+	isDemo, err := p.repo.IsDemoUser(ctx, job.UserID)
+	if err != nil {
+		p.logger.Error("failed to check import job owner", "job_id", job.ID, "err", err)
+		_ = p.repo.FailJob(ctx, job.ID, "import processing failed")
+		p.cleanupFile(job.StoredFilePath)
+		return
+	}
+	if isDemo {
+		if err := p.repo.FailJob(ctx, job.ID, "demo account is read-only"); err != nil {
+			p.logger.Error("failed to stop demo import job", "job_id", job.ID, "err", err)
+		}
+		p.cleanupFile(job.StoredFilePath)
+		p.logger.Info("blocked demo import job", "job_id", job.ID, "user_id", job.UserID)
+		return
+	}
 
 	if err := p.processClaimedJob(ctx, job); err != nil {
 		p.logger.Error("import job failed", "job_id", job.ID, "err", err)

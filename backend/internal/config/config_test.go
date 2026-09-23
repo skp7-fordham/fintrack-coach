@@ -17,6 +17,38 @@ func setBaseEnv(t *testing.T) {
 	t.Setenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
 	t.Setenv("AI_TIMEOUT", "")
 	t.Setenv("IMPORT_UPLOAD_DIR", "")
+	t.Setenv("DEMO_MODE_ENABLED", "")
+	t.Setenv("DEMO_USER_EMAIL", "")
+	t.Setenv("DEMO_USER_PASSWORD", "")
+	t.Setenv("DEMO_AI_DAILY_LIMIT", "")
+}
+
+func TestLoadDemoMode(t *testing.T) {
+	setBaseEnv(t)
+	t.Setenv("DEMO_MODE_ENABLED", "true")
+	t.Setenv("DEMO_USER_EMAIL", "demo@example.com")
+	t.Setenv("DEMO_USER_PASSWORD", "server-only-secret")
+	t.Setenv("DEMO_AI_DAILY_LIMIT", "5")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if !cfg.DemoModeEnabled || cfg.DemoAIDailyLimit != 5 {
+		t.Fatalf("unexpected demo config: %#v", cfg)
+	}
+	if cfg.DemoUserEmail != "demo@example.com" {
+		t.Fatalf("DemoUserEmail = %q", cfg.DemoUserEmail)
+	}
+}
+
+func TestLoadDemoModeRequiresServerCredentials(t *testing.T) {
+	setBaseEnv(t)
+	t.Setenv("DEMO_MODE_ENABLED", "true")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("expected enabled demo mode to require credentials")
+	}
 }
 
 func TestLoadPORTTakesPriorityOverServerPort(t *testing.T) {

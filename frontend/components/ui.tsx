@@ -122,6 +122,14 @@ export function ErrorState({
   );
 }
 
+export function DemoReadOnlyNote({ className = "" }: { className?: string }) {
+  return (
+    <p className={`text-xs font-medium text-muted ${className}`}>
+      Demo account is read-only
+    </p>
+  );
+}
+
 export function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Loading">

@@ -27,6 +27,7 @@ export interface Pagination {
 export interface AuthUser {
   id: string;
   email: string;
+  is_demo: boolean;
   created_at: string;
 }
 

@@ -27,13 +27,14 @@ func (r *AuthRepository) CreateUser(
 	const query = `
 		INSERT INTO users (email, password_hash)
 		VALUES ($1, $2)
-		RETURNING id::text, email, created_at, updated_at
+		RETURNING id::text, email, is_demo, created_at, updated_at
 	`
 
 	var user domain.User
 	err := r.pool.QueryRow(ctx, query, input.Email, input.PasswordHash).Scan(
 		&user.ID,
 		&user.Email,
+		&user.IsDemo,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -53,7 +54,7 @@ func (r *AuthRepository) FindUserByEmail(
 	normalizedEmail string,
 ) (*domain.UserWithPasswordHash, error) {
 	const query = `
-		SELECT id::text, email, password_hash, created_at, updated_at
+		SELECT id::text, email, password_hash, is_demo, created_at, updated_at
 		FROM users
 		WHERE LOWER(email) = $1
 		LIMIT 1
@@ -64,6 +65,7 @@ func (r *AuthRepository) FindUserByEmail(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,
+		&user.IsDemo,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)

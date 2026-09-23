@@ -2,8 +2,9 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppHeader } from "@/components/app-shell";
-import { getErrorMessage } from "@/components/auth-provider";
+import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import {
+  DemoReadOnlyNote,
   EmptyState,
   ErrorState,
   FormField,
@@ -23,6 +24,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const TERMINAL = new Set(["completed", "completed_with_errors", "failed"]);
 
 export default function ImportsPage() {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.is_demo);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [jobs, setJobs] = useState<ImportJob[]>([]);
   const [page, setPage] = useState(1);
@@ -95,6 +98,10 @@ export default function ImportsPage() {
   async function onUpload(e: FormEvent) {
     e.preventDefault();
     setUploadError("");
+    if (isDemo) {
+      setUploadError("Demo account is read-only");
+      return;
+    }
     if (!accountId) {
       setUploadError("Select an account");
       return;
@@ -154,7 +161,7 @@ export default function ImportsPage() {
         </pre>
         <form onSubmit={onUpload} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
           <FormField label="Account" htmlFor="import_account">
-            <select id="import_account" className={inputClassName()} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            <select id="import_account" className={inputClassName()} value={accountId} disabled={isDemo} onChange={(e) => setAccountId(e.target.value)}>
               <option value="">Select account</option>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>{account.name}</option>
@@ -167,15 +174,22 @@ export default function ImportsPage() {
               type="file"
               accept=".csv,text/csv"
               className={inputClassName()}
+              disabled={isDemo}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </FormField>
           <div className="flex items-end">
-            <button type="submit" className={primaryButtonClassName()} disabled={pending}>
+            <button
+              type="submit"
+              className={primaryButtonClassName()}
+              disabled={pending || isDemo}
+              title={isDemo ? "Demo account is read-only" : undefined}
+            >
               {pending ? "Importing…" : "Import CSV"}
             </button>
           </div>
         </form>
+        {isDemo ? <DemoReadOnlyNote className="mt-3" /> : null}
         {uploadError ? <p className="mt-3 text-sm text-danger">{uploadError}</p> : null}
       </section>
 

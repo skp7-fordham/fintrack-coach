@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useState } from "react";
 import { AppHeader } from "@/components/app-shell";
-import { getErrorMessage } from "@/components/auth-provider";
+import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import {
+  DemoReadOnlyNote,
   EmptyState,
   ErrorState,
   FormField,
@@ -23,6 +24,8 @@ import { formatDateLabel } from "@/lib/format";
 import type { Account, Category, Transaction } from "@/lib/types";
 
 export default function TransactionsPage() {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.is_demo);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -91,6 +94,10 @@ export default function TransactionsPage() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     setPending(true);
     setFormError("");
     try {
@@ -128,21 +135,26 @@ export default function TransactionsPage() {
           title="Transactions"
           subtitle="Review and record income and expenses across your accounts."
         />
-        <button
-          type="button"
-          className={primaryButtonClassName()}
-          onClick={() => {
-            setFormError("");
-            setForm((prev) => ({
-              ...prev,
-              account_id: accounts[0]?.id ?? "",
-              transaction_date: new Date().toISOString().slice(0, 10),
-            }));
-            setCreateOpen(true);
-          }}
-        >
-          Add transaction
-        </button>
+        <div className="flex flex-col items-start gap-1.5 sm:items-end">
+          <button
+            type="button"
+            className={primaryButtonClassName()}
+            disabled={isDemo}
+            title={isDemo ? "Demo account is read-only" : undefined}
+            onClick={() => {
+              setFormError("");
+              setForm((prev) => ({
+                ...prev,
+                account_id: accounts[0]?.id ?? "",
+                transaction_date: new Date().toISOString().slice(0, 10),
+              }));
+              setCreateOpen(true);
+            }}
+          >
+            Add transaction
+          </button>
+          {isDemo ? <DemoReadOnlyNote /> : null}
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -219,10 +231,26 @@ export default function TransactionsPage() {
           description="Add your first transaction or import a CSV to start tracking activity."
           action={
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
+              <button
+                type="button"
+                className={primaryButtonClassName()}
+                disabled={isDemo}
+                title={isDemo ? "Demo account is read-only" : undefined}
+                onClick={() => setCreateOpen(true)}
+              >
                 Add transaction
               </button>
-              <Link href="/imports" className={secondaryButtonClassName()}>Import CSV</Link>
+              {isDemo ? (
+                <span
+                  className={`${secondaryButtonClassName()} cursor-not-allowed opacity-60`}
+                  title="Demo account is read-only"
+                  aria-disabled="true"
+                >
+                  Import CSV
+                </span>
+              ) : (
+                <Link href="/imports" className={secondaryButtonClassName()}>Import CSV</Link>
+              )}
             </div>
           }
         />

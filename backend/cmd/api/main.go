@@ -62,7 +62,11 @@ func main() {
 	authenticate := auth.Middleware(tokenManager)
 
 	authRepo := repository.NewAuthRepository(pool)
-	authService := service.NewAuthService(authRepo, tokenManager)
+	authService := service.NewAuthService(authRepo, tokenManager, service.DemoAuthConfig{
+		Enabled:  cfg.DemoModeEnabled,
+		Email:    cfg.DemoUserEmail,
+		Password: cfg.DemoUserPassword,
+	})
 	authHandler := handlers.NewAuthHandler(authService, logger)
 
 	transactionRepo := repository.NewTransactionRepository(pool)
@@ -97,7 +101,7 @@ func main() {
 	toolRegistry := coach.NewToolRegistry(dashboardService, accountService, importService, logger)
 	coachAgent := coach.NewAgent(llm, toolRegistry, cfg.AIModel, cfg.AIMaxToolIterations, logger)
 	coachRepo := repository.NewCoachRepository(pool)
-	coachService := coach.NewService(coachRepo, coachAgent, logger)
+	coachService := coach.NewService(coachRepo, coachAgent, cfg.DemoAIDailyLimit, logger)
 	coachHandler := handlers.NewCoachHandler(coachService, logger)
 
 	apiHandler := router.New(router.Handlers{

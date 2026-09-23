@@ -138,11 +138,35 @@ Do not expose Redis credentials to the frontend.
    | `AI_MODEL` | e.g. `gpt-4o-mini` |
    | `AI_TIMEOUT` | `30s` |
    | `AI_MAX_TOOL_ITERATIONS` | `5` |
+   | `DEMO_MODE_ENABLED` | `true` only after the demo account is seeded |
+   | `DEMO_USER_EMAIL` | Dedicated demo account email, backend only |
+   | `DEMO_USER_PASSWORD` | Strong server-only secret; never expose to Vercel |
+   | `DEMO_AI_DAILY_LIMIT` | `5` |
    | `CORS_ALLOWED_ORIGINS` | Add after the Vercel URL is known |
 
 7. `SERVER_PORT` is optional. If Render sets `PORT`, it wins.
 8. Deploy.
 9. Confirm `GET https://<your-service>.onrender.com/health` returns `{"status":"ok"}`.
+
+### Seed the recruiter demo once
+
+Apply migration `000009_add_demo_mode` before seeding. The seed command uses PostgreSQL only; it does not need Redis, JWT, or OpenAI configuration. It is idempotent and can be rerun to refresh the relative three-month sample data.
+
+From `backend/`:
+
+```bash
+export DATABASE_URL='<Neon direct connection URL>'
+export DEMO_USER_EMAIL='<dedicated demo email>'
+export DEMO_USER_PASSWORD='<strong server-only secret>'
+
+go run ./cmd/seed-demo
+
+unset DATABASE_URL DEMO_USER_EMAIL DEMO_USER_PASSWORD
+```
+
+After the command succeeds, configure the same `DEMO_USER_EMAIL` and `DEMO_USER_PASSWORD` in Render, set `DEMO_MODE_ENABLED=true`, and redeploy. Never put the demo password in Git, Vercel, a `NEXT_PUBLIC_*` variable, logs, or documentation.
+
+The demo account is read-only at the backend. Its AI Coach allowance is stored atomically in PostgreSQL and resets by UTC calendar day.
 
 ### Render Free sleep / cold start
 

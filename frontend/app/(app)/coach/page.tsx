@@ -99,7 +99,9 @@ export default function CoachPage() {
       await loadConversations();
     } catch (err) {
       setMessages((prev) => prev.filter((item) => item.id !== optimisticId));
-      if (err instanceof ApiError && (err.status === 503 || err.status === 502)) {
+      if (err instanceof ApiError && err.status === 429) {
+        setError("The demo AI limit has been reached for today.");
+      } else if (err instanceof ApiError && (err.status === 503 || err.status === 502)) {
         setError("FinTrack Coach is temporarily unavailable. Please try again shortly.");
       } else {
         setError(getErrorMessage(err, "We couldn’t reach FinTrack Coach. Please try again."));

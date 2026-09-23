@@ -136,6 +136,16 @@ func (r *ImportRepository) GetJobByIDInternal(
 	return job, nil
 }
 
+func (r *ImportRepository) IsDemoUser(ctx context.Context, userID string) (bool, error) {
+	const query = `SELECT is_demo FROM users WHERE id = $1`
+
+	var isDemo bool
+	if err := r.pool.QueryRow(ctx, query, userID).Scan(&isDemo); err != nil {
+		return false, fmt.Errorf("check demo user: %w", err)
+	}
+	return isDemo, nil
+}
+
 func (r *ImportRepository) ListJobs(
 	ctx context.Context,
 	filter domain.ListImportJobsFilter,

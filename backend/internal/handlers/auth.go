@@ -39,6 +39,7 @@ type authSuccessData struct {
 type authUserData struct {
 	ID        string `json:"id"`
 	Email     string `json:"email"`
+	IsDemo    bool   `json:"is_demo"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -80,6 +81,22 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toAuthSuccessResponse(result))
 }
 
+func (h *AuthHandler) Demo(w http.ResponseWriter, r *http.Request) {
+	result, err := h.service.DemoLogin(r.Context())
+	if err != nil {
+		if errors.Is(err, domain.ErrDemoModeUnavailable) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "demo unavailable"})
+			return
+		}
+		h.logger.Error("demo login failed", "err", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+		return
+	}
+
+	h.logger.Info("demo user logged in", "user_id", result.User.ID)
+	writeJSON(w, http.StatusOK, toAuthSuccessResponse(result))
+}
+
 func (h *AuthHandler) writeRegisterError(w http.ResponseWriter, err error) {
 	var validationErr *domain.ValidationError
 	switch {
@@ -112,6 +129,7 @@ func toAuthSuccessResponse(result *domain.AuthResult) authSuccessResponse {
 			User: authUserData{
 				ID:        result.User.ID,
 				Email:     result.User.Email,
+				IsDemo:    result.User.IsDemo,
 				CreatedAt: result.User.CreatedAt.UTC().Format(time.RFC3339Nano),
 			},
 			AccessToken: result.AccessToken,

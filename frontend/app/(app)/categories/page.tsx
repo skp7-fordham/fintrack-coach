@@ -2,9 +2,10 @@
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import { AppHeader } from "@/components/app-shell";
-import { getErrorMessage } from "@/components/auth-provider";
+import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import {
   ConfirmDialog,
+  DemoReadOnlyNote,
   EmptyState,
   ErrorState,
   FormField,
@@ -29,11 +30,13 @@ const emptyForm = {
 function CategoryList({
   items,
   title,
+  readOnly,
   onEdit,
   onDelete,
 }: {
   items: Category[];
   title: string;
+  readOnly: boolean;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
 }) {
@@ -67,12 +70,20 @@ function CategoryList({
               </div>
             </div>
             <div className="flex shrink-0 gap-1">
-              <button type="button" className={`${secondaryButtonClassName()} px-3 py-1.5`} onClick={() => onEdit(category)}>
+              <button
+                type="button"
+                className={`${secondaryButtonClassName()} px-3 py-1.5`}
+                disabled={readOnly}
+                title={readOnly ? "Demo account is read-only" : undefined}
+                onClick={() => onEdit(category)}
+              >
                 Edit
               </button>
               <button
                 type="button"
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={readOnly}
+                title={readOnly ? "Demo account is read-only" : undefined}
                 onClick={() => onDelete(category)}
               >
                 Delete
@@ -127,6 +138,8 @@ function CategoryForm({
 }
 
 export default function CategoriesPage() {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.is_demo);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filter, setFilter] = useState<"all" | "income" | "expense">("all");
   const [loading, setLoading] = useState(true);
@@ -163,6 +176,10 @@ export default function CategoriesPage() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     setPending(true);
     setFormError("");
     try {
@@ -184,6 +201,10 @@ export default function CategoriesPage() {
 
   async function onEdit(e: FormEvent) {
     e.preventDefault();
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     if (!editCategory) return;
     setPending(true);
     setFormError("");
@@ -204,6 +225,10 @@ export default function CategoriesPage() {
   }
 
   async function onDelete() {
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     if (!deleteCategory) return;
     setPending(true);
     try {
@@ -251,6 +276,8 @@ export default function CategoriesPage() {
           <button
             type="button"
             className={primaryButtonClassName()}
+            disabled={isDemo}
+            title={isDemo ? "Demo account is read-only" : undefined}
             onClick={() => {
               setForm(emptyForm);
               setFormError("");
@@ -259,6 +286,7 @@ export default function CategoriesPage() {
           >
             Add category
           </button>
+          {isDemo ? <DemoReadOnlyNote className="w-full text-right" /> : null}
         </div>
       </div>
 
@@ -274,7 +302,13 @@ export default function CategoriesPage() {
               : `Add a ${filter} category or view all categories.`
           }
           action={
-            <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
+            <button
+              type="button"
+              className={primaryButtonClassName()}
+              disabled={isDemo}
+              title={isDemo ? "Demo account is read-only" : undefined}
+              onClick={() => setCreateOpen(true)}
+            >
               Add category
             </button>
           }
@@ -283,8 +317,8 @@ export default function CategoriesPage() {
 
       {!loading && categories.length > 0 ? (
         <div className="space-y-6">
-          <CategoryList items={grouped.expense} title="Expense categories" onEdit={beginEdit} onDelete={setDeleteCategory} />
-          <CategoryList items={grouped.income} title="Income categories" onEdit={beginEdit} onDelete={setDeleteCategory} />
+          <CategoryList items={grouped.expense} title="Expense categories" readOnly={isDemo} onEdit={beginEdit} onDelete={setDeleteCategory} />
+          <CategoryList items={grouped.income} title="Income categories" readOnly={isDemo} onEdit={beginEdit} onDelete={setDeleteCategory} />
         </div>
       ) : null}
 

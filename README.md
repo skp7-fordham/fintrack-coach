@@ -121,6 +121,10 @@ Step-by-step free-tier setup (Neon, Upstash, Render, Vercel, migrations, CORS, s
 
 Do not create a paid Render Background Worker. Production uses `RUN_IMPORT_WORKER_IN_API=true` on the single Free web service.
 
+### Recruiter demo
+
+The login page can offer a backend-authenticated **Try demo** flow. The seeded account uses real PostgreSQL data, is read-only at both the API and UI layers, and has a small daily AI Coach allowance. Demo credentials remain backend-only. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for migration, seeding, and Render configuration steps.
+
 ## Known free-tier limitations
 
 - Render Free sleeps when idle; the first request after sleep is a cold start.

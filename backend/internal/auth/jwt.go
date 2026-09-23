@@ -28,16 +28,18 @@ func (m *TokenManager) TTL() time.Duration {
 }
 
 type accessClaims struct {
-	Email string `json:"email"`
+	Email  string `json:"email"`
+	IsDemo bool   `json:"is_demo,omitempty"`
 	jwt.RegisteredClaims
 }
 
-func (m *TokenManager) IssueAccessToken(userID, email string) (token string, expiresInSec int64, err error) {
+func (m *TokenManager) IssueAccessToken(userID, email string, isDemo bool) (token string, expiresInSec int64, err error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(m.ttl)
 
 	claims := accessClaims{
-		Email: email,
+		Email:  email,
+		IsDemo: isDemo,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
 			Issuer:    issuer,
@@ -83,5 +85,6 @@ func (m *TokenManager) ParseAccessToken(tokenString string) (*domain.TokenClaims
 	return &domain.TokenClaims{
 		UserID: claims.Subject,
 		Email:  claims.Email,
+		IsDemo: claims.IsDemo,
 	}, nil
 }

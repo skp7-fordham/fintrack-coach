@@ -36,10 +36,23 @@ func Middleware(tokens *TokenManager) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := WithUserID(r.Context(), claims.UserID)
+			ctx := WithIdentity(r.Context(), claims.UserID, claims.IsDemo)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// RequireNonDemo blocks persistent mutations for signed demo identities.
+func RequireNonDemo(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if IsDemoFromContext(r.Context()) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+			_ = json.NewEncoder(w).Encode(errorBody{Error: "demo account is read-only"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func writeUnauthorized(w http.ResponseWriter, message string) {

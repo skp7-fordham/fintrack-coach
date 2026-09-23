@@ -142,6 +142,14 @@ export const api = {
     );
   },
 
+  demoLogin() {
+    return request<DataResponse<AuthResult>>(
+      "/auth/demo",
+      { method: "POST" },
+      false,
+    );
+  },
+
   listAccounts() {
     return request<DataResponse<Account[]>>("/accounts");
   },

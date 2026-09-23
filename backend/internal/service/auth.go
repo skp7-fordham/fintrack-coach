@@ -21,14 +21,22 @@ type authRepository interface {
 }
 
 type AuthService struct {
-	repo   authRepository
-	tokens *auth.TokenManager
+	repo       authRepository
+	tokens     *auth.TokenManager
+	demoConfig DemoAuthConfig
 }
 
-func NewAuthService(repo authRepository, tokens *auth.TokenManager) *AuthService {
+type DemoAuthConfig struct {
+	Enabled  bool
+	Email    string
+	Password string
+}
+
+func NewAuthService(repo authRepository, tokens *auth.TokenManager, demoConfig DemoAuthConfig) *AuthService {
 	return &AuthService{
-		repo:   repo,
-		tokens: tokens,
+		repo:       repo,
+		tokens:     tokens,
+		demoConfig: demoConfig,
 	}
 }
 
@@ -81,8 +89,38 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*domain.
 	return s.issueAuthResult(user.User)
 }
 
+func (s *AuthService) DemoLogin(ctx context.Context) (*domain.AuthResult, error) {
+	if !s.demoConfig.Enabled {
+		return nil, domain.ErrDemoModeUnavailable
+	}
+
+	email := strings.ToLower(strings.TrimSpace(s.demoConfig.Email))
+	if email == "" || s.demoConfig.Password == "" {
+		return nil, domain.ErrDemoModeUnavailable
+	}
+
+	user, err := s.repo.FindUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrDemoModeUnavailable
+		}
+		return nil, err
+	}
+	if !user.IsDemo {
+		return nil, domain.ErrDemoModeUnavailable
+	}
+	if err := bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(s.demoConfig.Password),
+	); err != nil {
+		return nil, domain.ErrDemoModeUnavailable
+	}
+
+	return s.issueAuthResult(user.User)
+}
+
 func (s *AuthService) issueAuthResult(user domain.User) (*domain.AuthResult, error) {
-	token, expiresIn, err := s.tokens.IssueAccessToken(user.ID, user.Email)
+	token, expiresIn, err := s.tokens.IssueAccessToken(user.ID, user.Email, user.IsDemo)
 	if err != nil {
 		return nil, err
 	}

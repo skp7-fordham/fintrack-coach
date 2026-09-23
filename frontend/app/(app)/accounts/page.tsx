@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useState } from "react";
 import { Banknote, Landmark, PiggyBank, WalletCards } from "lucide-react";
 import { AppHeader } from "@/components/app-shell";
-import { getErrorMessage } from "@/components/auth-provider";
+import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import {
   ConfirmDialog,
+  DemoReadOnlyNote,
   EmptyState,
   ErrorState,
   FormField,
@@ -43,6 +44,8 @@ function AccountIcon({ type }: { type: string }) {
 }
 
 export default function AccountsPage() {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.is_demo);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -71,6 +74,10 @@ export default function AccountsPage() {
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     setFormError("");
     setPending(true);
     try {
@@ -92,6 +99,10 @@ export default function AccountsPage() {
 
   async function onEdit(e: FormEvent) {
     e.preventDefault();
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     if (!editAccount) return;
     setFormError("");
     setPending(true);
@@ -111,6 +122,10 @@ export default function AccountsPage() {
   }
 
   async function onDelete() {
+    if (isDemo) {
+      setFormError("Demo account is read-only");
+      return;
+    }
     if (!deleteAccount) return;
     setPending(true);
     setFormError("");
@@ -132,17 +147,22 @@ export default function AccountsPage() {
           title="Accounts"
           subtitle="Manage the accounts that make up your financial picture."
         />
-        <button
-          type="button"
-          className={primaryButtonClassName()}
-          onClick={() => {
-            setFormError("");
-            setForm(emptyCreate);
-            setCreateOpen(true);
-          }}
-        >
-          Add account
-        </button>
+        <div className="flex flex-col items-start gap-1.5 sm:items-end">
+          <button
+            type="button"
+            className={primaryButtonClassName()}
+            disabled={isDemo}
+            title={isDemo ? "Demo account is read-only" : undefined}
+            onClick={() => {
+              setFormError("");
+              setForm(emptyCreate);
+              setCreateOpen(true);
+            }}
+          >
+            Add account
+          </button>
+          {isDemo ? <DemoReadOnlyNote /> : null}
+        </div>
       </div>
 
       {error ? <ErrorState message={error} onRetry={load} /> : null}
@@ -153,7 +173,13 @@ export default function AccountsPage() {
           title="No accounts yet"
           description="Add an account to start tracking balances and transactions."
           action={
-            <button type="button" className={primaryButtonClassName()} onClick={() => setCreateOpen(true)}>
+            <button
+              type="button"
+              className={primaryButtonClassName()}
+              disabled={isDemo}
+              title={isDemo ? "Demo account is read-only" : undefined}
+              onClick={() => setCreateOpen(true)}
+            >
               Add account
             </button>
           }
@@ -185,6 +211,8 @@ export default function AccountsPage() {
                 <button
                   type="button"
                   className={secondaryButtonClassName()}
+                  disabled={isDemo}
+                  title={isDemo ? "Demo account is read-only" : undefined}
                   onClick={() => {
                     setFormError("");
                     setEditAccount(account);
@@ -199,7 +227,9 @@ export default function AccountsPage() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-soft"
+                  className="rounded-md border border-danger/30 px-4 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isDemo}
+                  title={isDemo ? "Demo account is read-only" : undefined}
                   onClick={() => {
                     setFormError("");
                     setDeleteAccount(account);

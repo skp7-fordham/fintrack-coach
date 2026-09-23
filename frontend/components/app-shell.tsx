@@ -81,7 +81,14 @@ export function AppSidebar() {
   return (
     <>
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
-        <BrandLockup compact />
+        <div className="flex items-center gap-2">
+          <BrandLockup compact />
+          {user?.is_demo ? (
+            <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-medium text-primary">
+              Demo
+            </span>
+          ) : null}
+        </div>
         <button
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
@@ -102,7 +109,7 @@ export function AppSidebar() {
             <div className="mt-9 flex-1">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
-            <UserFooter email={user?.email} onLogout={logout} />
+            <UserFooter email={user?.email} isDemo={user?.is_demo} onLogout={logout} />
           </aside>
         </div>
       ) : null}
@@ -112,7 +119,7 @@ export function AppSidebar() {
         <div className="mt-9 flex-1">
           <NavLinks />
         </div>
-        <UserFooter email={user?.email} onLogout={logout} />
+        <UserFooter email={user?.email} isDemo={user?.is_demo} onLogout={logout} />
       </aside>
     </>
   );
@@ -128,14 +135,25 @@ function Brand() {
 
 function UserFooter({
   email,
+  isDemo,
   onLogout,
 }: {
   email?: string;
+  isDemo?: boolean;
   onLogout: () => void;
 }) {
   return (
     <div className="border-t border-white/10 pt-4">
-      <p className="truncate px-2 text-xs text-sidebar-muted">{email ?? "Signed in"}</p>
+      {isDemo ? (
+        <div className="px-2">
+          <span className="inline-flex rounded-full bg-teal-400/10 px-2 py-1 text-xs font-medium text-teal-200">
+            Demo workspace
+          </span>
+          <p className="mt-1 text-[11px] text-sidebar-muted">Read-only sample data</p>
+        </div>
+      ) : (
+        <p className="truncate px-2 text-xs text-sidebar-muted">{email ?? "Signed in"}</p>
+      )}
       <button
         type="button"
         onClick={onLogout}

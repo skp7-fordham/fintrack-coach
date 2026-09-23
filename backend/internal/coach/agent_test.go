@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/aiprovider"
 	"github.com/skp7-fordham/fintrack-coach/backend/internal/domain"
@@ -279,13 +280,26 @@ func TestProviderFailureMapsSafely(t *testing.T) {
 type fakeCoachRepo struct {
 	conversations map[string]*domain.CoachConversation
 	messages      map[string][]domain.CoachMessage
+	demoAllowed   bool
+	demoUses      int
 }
 
 func newFakeCoachRepo() *fakeCoachRepo {
 	return &fakeCoachRepo{
 		conversations: make(map[string]*domain.CoachConversation),
 		messages:      make(map[string][]domain.CoachMessage),
+		demoAllowed:   true,
 	}
+}
+
+func (f *fakeCoachRepo) ConsumeDemoAIMessage(
+	ctx context.Context,
+	userID string,
+	usageDate time.Time,
+	limit int,
+) (bool, error) {
+	f.demoUses++
+	return f.demoAllowed && f.demoUses <= limit, nil
 }
 
 func (f *fakeCoachRepo) CreateConversation(ctx context.Context, input domain.CreateCoachConversationInput) (*domain.CoachConversation, error) {
@@ -359,14 +373,14 @@ func TestConversationBelongingToAnotherUserReturnsNotFound(t *testing.T) {
 		t.Fatalf("create conversation: %v", err)
 	}
 
-	svc := NewService(repo, NewAgent(&stubLLM{}, &recordingTools{}, "test-model", 5, testLogger()), testLogger())
+	svc := NewService(repo, NewAgent(&stubLLM{}, &recordingTools{}, "test-model", 5, testLogger()), 5, testLogger())
 	_, err = svc.GetConversation(context.Background(), otherID, conversation.ID)
 	if !errors.Is(err, domain.ErrConversationNotFound) {
 		t.Fatalf("expected not found, got %v", err)
 	}
 
 	foreignID := conversation.ID
-	_, err = svc.Chat(context.Background(), otherID, dto.CoachChatRequest{
+	_, err = svc.Chat(context.Background(), otherID, false, dto.CoachChatRequest{
 		Message:        "Hello",
 		ConversationID: &foreignID,
 	})
@@ -376,8 +390,8 @@ func TestConversationBelongingToAnotherUserReturnsNotFound(t *testing.T) {
 }
 
 func TestEmptyChatMessageReturnsValidationError(t *testing.T) {
-	svc := NewService(newFakeCoachRepo(), NewAgent(&stubLLM{}, &recordingTools{}, "test-model", 5, testLogger()), testLogger())
-	_, err := svc.Chat(context.Background(), "11111111-1111-1111-1111-111111111111", dto.CoachChatRequest{
+	svc := NewService(newFakeCoachRepo(), NewAgent(&stubLLM{}, &recordingTools{}, "test-model", 5, testLogger()), 5, testLogger())
+	_, err := svc.Chat(context.Background(), "11111111-1111-1111-1111-111111111111", false, dto.CoachChatRequest{
 		Message: "   ",
 	})
 	var validationErr *domain.ValidationError
@@ -386,6 +400,71 @@ func TestEmptyChatMessageReturnsValidationError(t *testing.T) {
 	}
 	if validationErr.Message != "message is required" {
 		t.Fatalf("unexpected message: %s", validationErr.Message)
+	}
+}
+
+func TestServiceBlocksDemoChatAfterDailyLimit(t *testing.T) {
+	repo := newFakeCoachRepo()
+	repo.demoAllowed = false
+	svc := NewService(
+		repo,
+		NewAgent(&stubLLM{}, &recordingTools{}, "test-model", 5, testLogger()),
+		5,
+		testLogger(),
+	)
+
+	_, err := svc.Chat(
+		context.Background(),
+		"11111111-1111-1111-1111-111111111111",
+		true,
+		dto.CoachChatRequest{Message: "How am I doing?"},
+	)
+	if !errors.Is(err, domain.ErrDemoAILimitReached) {
+		t.Fatalf("expected demo AI limit error, got %v", err)
+	}
+	if repo.demoUses != 1 {
+		t.Fatalf("demo usage calls = %d, want 1", repo.demoUses)
+	}
+	if len(repo.conversations) != 0 {
+		t.Fatal("conversation created after demo limit was reached")
+	}
+}
+
+func TestServiceAllowsFiveDemoChatsPerDay(t *testing.T) {
+	repo := newFakeCoachRepo()
+	llm := &stubLLM{responses: make([]aiprovider.GenerateResponse, 5)}
+	for i := range llm.responses {
+		llm.responses[i] = aiprovider.GenerateResponse{Content: "Grounded demo response."}
+	}
+	svc := NewService(
+		repo,
+		NewAgent(llm, &recordingTools{}, "test-model", 5, testLogger()),
+		5,
+		testLogger(),
+	)
+
+	for i := 0; i < 5; i++ {
+		if _, err := svc.Chat(
+			context.Background(),
+			"11111111-1111-1111-1111-111111111111",
+			true,
+			dto.CoachChatRequest{Message: "How am I doing?"},
+		); err != nil {
+			t.Fatalf("chat %d failed: %v", i+1, err)
+		}
+	}
+
+	_, err := svc.Chat(
+		context.Background(),
+		"11111111-1111-1111-1111-111111111111",
+		true,
+		dto.CoachChatRequest{Message: "One more question"},
+	)
+	if !errors.Is(err, domain.ErrDemoAILimitReached) {
+		t.Fatalf("sixth chat error = %v", err)
+	}
+	if len(llm.calls) != 5 {
+		t.Fatalf("LLM calls = %d, want 5", len(llm.calls))
 	}
 }
 

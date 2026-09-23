@@ -4,6 +4,7 @@ const USER_KEY = "fintrack_user";
 export type StoredUser = {
   id: string;
   email: string;
+  is_demo: boolean;
 };
 
 export function getToken(): string | null {
@@ -21,7 +22,13 @@ export function getStoredUser(): StoredUser | null {
   const raw = window.localStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as StoredUser;
+    const parsed = JSON.parse(raw) as Partial<StoredUser>;
+    if (!parsed.id || !parsed.email) return null;
+    return {
+      id: parsed.id,
+      email: parsed.email,
+      is_demo: Boolean(parsed.is_demo),
+    };
   } catch {
     return null;
   }

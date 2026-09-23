@@ -24,6 +24,7 @@ type AuthContextValue = {
   ready: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  demoLogin: () => Promise<void>;
   logout: () => void;
 };
 
@@ -51,7 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
-    const nextUser = { id: res.data.user.id, email: res.data.user.email };
+    const nextUser = {
+      id: res.data.user.id,
+      email: res.data.user.email,
+      is_demo: res.data.user.is_demo,
+    };
     setSession(res.data.access_token, nextUser);
     setUser(nextUser);
     router.replace("/dashboard");
@@ -59,7 +64,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (email: string, password: string) => {
     const res = await api.register(email, password);
-    const nextUser = { id: res.data.user.id, email: res.data.user.email };
+    const nextUser = {
+      id: res.data.user.id,
+      email: res.data.user.email,
+      is_demo: res.data.user.is_demo,
+    };
+    setSession(res.data.access_token, nextUser);
+    setUser(nextUser);
+    router.replace("/dashboard");
+  }, [router]);
+
+  const demoLogin = useCallback(async () => {
+    const res = await api.demoLogin();
+    const nextUser = {
+      id: res.data.user.id,
+      email: res.data.user.email,
+      is_demo: res.data.user.is_demo,
+    };
     setSession(res.data.access_token, nextUser);
     setUser(nextUser);
     router.replace("/dashboard");
@@ -72,8 +93,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   const value = useMemo(
-    () => ({ user, ready, login, register, logout }),
-    [user, ready, login, register, logout],
+    () => ({ user, ready, login, register, demoLogin, logout }),
+    [user, ready, login, register, demoLogin, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

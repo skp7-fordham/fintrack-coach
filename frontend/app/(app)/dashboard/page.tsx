@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppHeader } from "@/components/app-shell";
-import { getErrorMessage } from "@/components/auth-provider";
+import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import {
   EmptyState,
   ErrorState,
@@ -36,6 +36,8 @@ import type {
 } from "@/lib/types";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.is_demo);
   const [month, setMonth] = useState(currentYearMonthUTC());
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [spending, setSpending] = useState<CategorySpendingItem[]>([]);
@@ -147,9 +149,19 @@ export default function DashboardPage() {
                   title="No spending recorded this month"
                   description="Add transactions or import a CSV to see how your spending is distributed."
                   action={
-                    <Link href="/transactions" className={primaryButtonClassName()}>
-                      Add transaction
-                    </Link>
+                    isDemo ? (
+                      <span
+                        className={`${primaryButtonClassName()} cursor-not-allowed opacity-60`}
+                        title="Demo account is read-only"
+                        aria-disabled="true"
+                      >
+                        Add transaction
+                      </span>
+                    ) : (
+                      <Link href="/transactions" className={primaryButtonClassName()}>
+                        Add transaction
+                      </Link>
+                    )
                   }
                 />
               ) : (
@@ -205,12 +217,25 @@ export default function DashboardPage() {
                 description="Add an account and record transactions to start building your financial overview."
                 action={
                   <div className="flex flex-wrap gap-2">
-                    <Link href="/accounts" className={primaryButtonClassName()}>
-                      Add account
-                    </Link>
-                    <Link href="/imports" className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-50">
-                      Import CSV
-                    </Link>
+                    {isDemo ? (
+                      <>
+                        <span className={`${primaryButtonClassName()} cursor-not-allowed opacity-60`} aria-disabled="true">
+                          Add account
+                        </span>
+                        <span className="cursor-not-allowed rounded-md border border-border px-4 py-2 text-sm font-medium opacity-60">
+                          Import CSV
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Link href="/accounts" className={primaryButtonClassName()}>
+                          Add account
+                        </Link>
+                        <Link href="/imports" className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-slate-50">
+                          Import CSV
+                        </Link>
+                      </>
+                    )}
                   </div>
                 }
               />

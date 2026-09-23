@@ -26,6 +26,10 @@ type Config struct {
 	AIModel                 string
 	AITimeout               time.Duration
 	AIMaxToolIterations     int
+	DemoModeEnabled         bool
+	DemoUserEmail           string
+	DemoUserPassword        string
+	DemoAIDailyLimit        int
 	CORSAllowedOrigins      []string
 }
 
@@ -82,6 +86,28 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("AI_MAX_TOOL_ITERATIONS must be at least 1")
 	}
 
+	demoModeEnabled, err := getEnvBool("DEMO_MODE_ENABLED", false)
+	if err != nil {
+		return Config{}, err
+	}
+	demoAIDailyLimit, err := getEnvInt("DEMO_AI_DAILY_LIMIT", 5)
+	if err != nil {
+		return Config{}, err
+	}
+	if demoAIDailyLimit < 1 {
+		return Config{}, fmt.Errorf("DEMO_AI_DAILY_LIMIT must be at least 1")
+	}
+	demoUserEmail := strings.TrimSpace(os.Getenv("DEMO_USER_EMAIL"))
+	demoUserPassword := os.Getenv("DEMO_USER_PASSWORD")
+	if demoModeEnabled {
+		if demoUserEmail == "" {
+			return Config{}, fmt.Errorf("DEMO_USER_EMAIL is required when DEMO_MODE_ENABLED=true")
+		}
+		if demoUserPassword == "" {
+			return Config{}, fmt.Errorf("DEMO_USER_PASSWORD is required when DEMO_MODE_ENABLED=true")
+		}
+	}
+
 	origins, err := parseCORSOrigins(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"))
 	if err != nil {
 		return Config{}, err
@@ -105,6 +131,10 @@ func Load() (Config, error) {
 		AIModel:                 getEnv("AI_MODEL", "gpt-4o-mini"),
 		AITimeout:               aiTimeout,
 		AIMaxToolIterations:     aiMaxIterations,
+		DemoModeEnabled:         demoModeEnabled,
+		DemoUserEmail:           demoUserEmail,
+		DemoUserPassword:        demoUserPassword,
+		DemoAIDailyLimit:        demoAIDailyLimit,
 		CORSAllowedOrigins:      origins,
 	}, nil
 }

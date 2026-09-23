@@ -31,12 +31,14 @@ type Repository interface {
 	ListRecentVisibleMessages(ctx context.Context, conversationID string, limit int) ([]domain.CoachMessage, error)
 	ListVisibleMessages(ctx context.Context, userID, conversationID string) ([]domain.CoachMessage, error)
 	DeleteConversation(ctx context.Context, userID, conversationID string) error
+	ConsumeDemoAIMessage(ctx context.Context, userID string, usageDate time.Time, limit int) (bool, error)
 }
 
 type Service struct {
-	repo   Repository
-	agent  *Agent
-	logger *slog.Logger
+	repo             Repository
+	agent            *Agent
+	demoAIDailyLimit int
+	logger           *slog.Logger
 }
 
 type ListConversationsResult struct {
@@ -52,15 +54,21 @@ type ConversationDetail struct {
 	Messages     []domain.CoachMessage
 }
 
-func NewService(repo Repository, agent *Agent, logger *slog.Logger) *Service {
+func NewService(repo Repository, agent *Agent, demoAIDailyLimit int, logger *slog.Logger) *Service {
 	return &Service{
-		repo:   repo,
-		agent:  agent,
-		logger: logger,
+		repo:             repo,
+		agent:            agent,
+		demoAIDailyLimit: demoAIDailyLimit,
+		logger:           logger,
 	}
 }
 
-func (s *Service) Chat(ctx context.Context, userID string, req dto.CoachChatRequest) (*domain.CoachChatResult, error) {
+func (s *Service) Chat(
+	ctx context.Context,
+	userID string,
+	isDemo bool,
+	req dto.CoachChatRequest,
+) (*domain.CoachChatResult, error) {
 	start := time.Now()
 	userID = strings.TrimSpace(userID)
 	if !isValidUUID(userID) {
@@ -73,6 +81,21 @@ func (s *Service) Chat(ctx context.Context, userID string, req dto.CoachChatRequ
 	}
 	if utf8.RuneCountInString(message) > maxChatMessageLength {
 		return nil, &domain.ValidationError{Message: "message must be at most 2000 characters"}
+	}
+
+	if isDemo {
+		allowed, err := s.repo.ConsumeDemoAIMessage(
+			ctx,
+			userID,
+			time.Now().UTC(),
+			s.demoAIDailyLimit,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if !allowed {
+			return nil, domain.ErrDemoAILimitReached
+		}
 	}
 
 	var conversation *domain.CoachConversation

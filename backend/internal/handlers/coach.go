@@ -82,7 +82,7 @@ func (h *CoachHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.Chat(r.Context(), userID, req)
+	result, err := h.service.Chat(r.Context(), userID, auth.IsDemoFromContext(r.Context()), req)
 	if err != nil {
 		h.writeCoachError(w, err, "failed to process coach chat")
 		return
@@ -207,6 +207,8 @@ func (h *CoachHandler) writeCoachError(w http.ResponseWriter, err error, logMess
 		writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: "financial coach is temporarily unavailable"})
 	case errors.Is(err, domain.ErrCoachToolLimitExceeded):
 		writeJSON(w, http.StatusBadGateway, errorResponse{Error: "financial coach is temporarily unavailable"})
+	case errors.Is(err, domain.ErrDemoAILimitReached):
+		writeJSON(w, http.StatusTooManyRequests, errorResponse{Error: "demo AI limit reached"})
 	default:
 		h.logger.Error(logMessage, "err", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
