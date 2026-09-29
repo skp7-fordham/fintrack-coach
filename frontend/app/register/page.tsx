@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import { AuthShell } from "@/components/auth-shell";
 import { FormField, inputClassName, primaryButtonClassName } from "@/components/ui";
@@ -13,6 +14,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -56,26 +59,56 @@ export default function RegisterPage() {
           htmlFor="password"
           hint="At least 8 characters with upper, lower, and a digit"
         >
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            className={inputClassName()}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              className={`${inputClassName()} pr-10`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword((visible) => !visible)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
         </FormField>
         <FormField label="Confirm password" htmlFor="confirm">
-          <input
-            id="confirm"
-            type="password"
-            autoComplete="new-password"
-            required
-            className={inputClassName()}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              id="confirm"
+              type={showConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              required
+              className={`${inputClassName()} pr-10`}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            <button
+              type="button"
+              aria-label={showConfirm ? "Hide password" : "Show password"}
+              aria-pressed={showConfirm}
+              onClick={() => setShowConfirm((visible) => !visible)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              {showConfirm ? (
+                <EyeOff className="h-4 w-4" aria-hidden />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden />
+              )}
+            </button>
+          </div>
         </FormField>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button type="submit" className={`${primaryButtonClassName()} w-full`} disabled={pending}>
