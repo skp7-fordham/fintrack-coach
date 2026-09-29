@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { getErrorMessage, useAuth } from "@/components/auth-provider";
 import { AuthShell } from "@/components/auth-shell";
 import {
@@ -41,6 +41,8 @@ export default function LoginPage() {
   }
 
   async function onDemoLogin() {
+    if (pending || demoPending) return;
+
     setError("");
     setDemoPending(true);
     try {
@@ -82,7 +84,7 @@ export default function LoginPage() {
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((visible) => !visible)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="absolute right-1 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden />
@@ -110,9 +112,17 @@ export default function LoginPage() {
         type="button"
         className={`${secondaryButtonClassName()} w-full`}
         disabled={pending || demoPending}
+        aria-busy={demoPending}
         onClick={() => void onDemoLogin()}
       >
-        {demoPending ? "Opening demo…" : "Try demo"}
+        {demoPending ? (
+          <>
+            <LoaderCircle className="mr-2 h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            Opening demo...
+          </>
+        ) : (
+          "Try demo"
+        )}
       </button>
       <p className="mt-2 text-center text-xs text-muted">
         Explore FinTrack with sample financial data.

@@ -74,7 +74,7 @@ export default function RegisterPage() {
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((visible) => !visible)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="absolute right-1 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" aria-hidden />
@@ -100,7 +100,7 @@ export default function RegisterPage() {
               aria-label={showConfirm ? "Hide password" : "Show password"}
               aria-pressed={showConfirm}
               onClick={() => setShowConfirm((visible) => !visible)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="absolute right-1 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-teal-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {showConfirm ? (
                 <EyeOff className="h-4 w-4" aria-hidden />
