@@ -361,6 +361,70 @@ func (f *fakeCoachRepo) DeleteConversation(ctx context.Context, userID, conversa
 	return nil
 }
 
+func TestDeleteConversationRemovesConversationAndMessages(t *testing.T) {
+	repo := newFakeCoachRepo()
+	userID := "11111111-1111-1111-1111-111111111111"
+	conversation, err := repo.CreateConversation(context.Background(), domain.CreateCoachConversationInput{
+		UserID: userID,
+		Title:  strPtr("Monthly review"),
+	})
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+	if _, err := repo.AddMessage(context.Background(), domain.AddCoachMessageInput{
+		ConversationID: conversation.ID,
+		Role:           domain.CoachMessageRoleUser,
+		Content:        "How was this month?",
+	}); err != nil {
+		t.Fatalf("add message: %v", err)
+	}
+
+	svc := NewService(repo, nil, 5, testLogger())
+	if err := svc.DeleteConversation(context.Background(), userID, conversation.ID); err != nil {
+		t.Fatalf("delete conversation: %v", err)
+	}
+	if _, exists := repo.conversations[conversation.ID]; exists {
+		t.Fatal("conversation still exists after deletion")
+	}
+	if _, exists := repo.messages[conversation.ID]; exists {
+		t.Fatal("conversation messages still exist after deletion")
+	}
+}
+
+func TestDeleteConversationBelongingToAnotherUserReturnsNotFound(t *testing.T) {
+	repo := newFakeCoachRepo()
+	ownerID := "11111111-1111-1111-1111-111111111111"
+	otherID := "22222222-2222-2222-2222-222222222222"
+	conversation, err := repo.CreateConversation(context.Background(), domain.CreateCoachConversationInput{
+		UserID: ownerID,
+		Title:  strPtr("Private conversation"),
+	})
+	if err != nil {
+		t.Fatalf("create conversation: %v", err)
+	}
+
+	svc := NewService(repo, nil, 5, testLogger())
+	err = svc.DeleteConversation(context.Background(), otherID, conversation.ID)
+	if !errors.Is(err, domain.ErrConversationNotFound) {
+		t.Fatalf("delete error = %v, want conversation not found", err)
+	}
+	if _, exists := repo.conversations[conversation.ID]; !exists {
+		t.Fatal("another user's conversation was deleted")
+	}
+}
+
+func TestDeleteNonexistentConversationReturnsNotFound(t *testing.T) {
+	svc := NewService(newFakeCoachRepo(), nil, 5, testLogger())
+	err := svc.DeleteConversation(
+		context.Background(),
+		"11111111-1111-1111-1111-111111111111",
+		"33333333-3333-3333-3333-333333333333",
+	)
+	if !errors.Is(err, domain.ErrConversationNotFound) {
+		t.Fatalf("delete error = %v, want conversation not found", err)
+	}
+}
+
 func TestConversationBelongingToAnotherUserReturnsNotFound(t *testing.T) {
 	repo := newFakeCoachRepo()
 	ownerID := "11111111-1111-1111-1111-111111111111"

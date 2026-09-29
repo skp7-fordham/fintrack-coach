@@ -53,7 +53,7 @@ func New(h Handlers, authenticate func(http.Handler) http.Handler) http.Handler 
 	mux.Handle("POST /coach/chat", authenticate(http.HandlerFunc(h.Coach.Chat)))
 	mux.Handle("GET /coach/conversations", authenticate(http.HandlerFunc(h.Coach.ListConversations)))
 	mux.Handle("GET /coach/conversations/{id}", authenticate(http.HandlerFunc(h.Coach.GetConversation)))
-	mux.Handle("DELETE /coach/conversations/{id}", protectMutation(http.HandlerFunc(h.Coach.DeleteConversation)))
+	mux.Handle("DELETE /coach/conversations/{id}", authenticate(http.HandlerFunc(h.Coach.DeleteConversation)))
 
 	return mux
 }

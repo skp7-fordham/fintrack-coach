@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { AppHeader } from "@/components/app-shell";
 import { getErrorMessage } from "@/components/auth-provider";
 import {
@@ -31,6 +32,8 @@ export default function CoachPage() {
   const [loadingList, setLoadingList] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -73,6 +76,37 @@ export default function CoachPage() {
     setMessages([]);
     setInput("");
     setError("");
+    setDeleteError("");
+  }
+
+  async function deleteConversation(id: string) {
+    if (deletingId || !window.confirm("Delete this conversation?")) return;
+
+    setDeletingId(id);
+    setDeleteError("");
+    try {
+      await api.deleteConversation(id);
+
+      const deletedIndex = conversations.findIndex((conversation) => conversation.id === id);
+      const remaining = conversations.filter((conversation) => conversation.id !== id);
+      setConversations(remaining);
+
+      if (selectedId === id) {
+        setSelectedId(null);
+        setMessages([]);
+        setInput("");
+        setLoadingThread(false);
+
+        const nextConversation = remaining[deletedIndex] ?? remaining[deletedIndex - 1];
+        if (nextConversation) {
+          await selectConversation(nextConversation.id);
+        }
+      }
+    } catch {
+      setDeleteError("We couldn’t delete this conversation. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function sendMessage(raw: string) {
@@ -132,6 +166,7 @@ export default function CoachPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
             {loadingList ? <LoadingSkeleton rows={4} /> : null}
+            {deleteError ? <p className="px-3 py-2 text-xs text-danger">{deleteError}</p> : null}
             {!loadingList && conversations.length === 0 ? (
               <div className="p-3">
                 <p className="text-sm font-medium">No conversations yet</p>
@@ -139,18 +174,31 @@ export default function CoachPage() {
               </div>
             ) : null}
             {conversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                type="button"
-                onClick={() => void selectConversation(conversation.id)}
-                className={`mb-1 w-full rounded-lg px-3 py-2 text-left text-sm ${
-                  selectedId === conversation.id ? "bg-primary-soft text-primary" : "hover:bg-slate-50"
-                }`}
-              >
-                <span className="line-clamp-2 font-medium">
-                  {conversation.title || "Untitled conversation"}
-                </span>
-              </button>
+              <div key={conversation.id} className="group relative mb-1">
+                <button
+                  type="button"
+                  onClick={() => void selectConversation(conversation.id)}
+                  className={`w-full cursor-pointer rounded-lg px-3 py-2 pr-10 text-left text-sm ${
+                    selectedId === conversation.id ? "bg-primary-soft text-primary" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <span className="line-clamp-2 font-medium">
+                    {conversation.title || "Untitled conversation"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Delete conversation"
+                  disabled={deletingId === conversation.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void deleteConversation(conversation.id);
+                  }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 cursor-pointer rounded-md p-1.5 text-slate-400 opacity-0 transition-colors hover:bg-red-50 hover:text-red-600 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 group-focus-within:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </button>
+              </div>
             ))}
           </div>
         </aside>
